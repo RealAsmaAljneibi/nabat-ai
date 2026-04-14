@@ -607,13 +607,14 @@ def process_export_directory(export_dir: str, phase: str = "phase_1") -> dict:
 # ─────────────────────────────────────────────
 
 if __name__ == "__main__":
-    BASE = Path("/sessions/fervent-sharp-faraday/mnt/handwritten-poems/manuscripts/Ground_Truth_Exports")
+    PROJECT_ROOT = Path(__file__).parent.parent.parent
 
+    BASE = PROJECT_ROOT / "manuscripts" / "Ground_Truth_Exports"
     PHASE1_DIR = BASE / "export_doc5_phase_1_pagexml_20260414140737"
     PHASE4_DIR = BASE / "export_doc9_phase_4_pagexml_20260414140639"
 
-    OUTPUT_DIR = Path("/sessions/fervent-sharp-faraday/mnt/handwritten-poems/al_nassikh_output")
-    OUTPUT_DIR.mkdir(exist_ok=True)
+    OUTPUT_DIR = PROJECT_ROOT / "data" / "ground_truth"
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     print("=" * 60)
     print("Al-Nassikh Parser — Phase 1 (Body Pages)")

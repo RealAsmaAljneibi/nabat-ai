@@ -1,13 +1,29 @@
+# Python
 __pycache__/
-*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
 *.egg-info/
-.env
-.venv/
+dist/
+build/
+.eggs/
 venv/
-*.log
-.DS_Store
-Thumbs.db
-*.ipynb_checkpoints/
+.venv/
+env/
+
+# Jupyter
 .ipynb_checkpoints/
-node_modules/
-manuscripts/*.pdf
+
+# macOS
+.DS_Store
+
+# Editor temp files
+~$*
+*.tmp
+
+# Qdrant local data
+qdrant_storage/
+
+# Local env
+.env
