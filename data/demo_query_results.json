@@ -1,0 +1,42 @@
+[
+  {
+    "query": "الناس",
+    "description": "Search for mentions of 'the people' across all manuscripts",
+    "result_count": 3,
+    "anchor_hits": 0,
+    "top_result_text": "شطر كنه عن الناس محدود",
+    "citation": "المصدر: manuscript07 | صفحة 20 | بيت 23 | [الصورة: manuscript07_p20.png] | [ثقة: 95%]"
+  },
+  {
+    "query": "الله",
+    "description": "Search for verses invoking Allah",
+    "result_count": 3,
+    "anchor_hits": 11,
+    "top_result_text": "مادام عين الله علينا تخايل",
+    "citation": "المصدر: manuscript07 | صفحة 8 | بيت 4 | [الصورة: manuscript07_p8.png] | [ثقة: 95%]"
+  },
+  {
+    "query": "ناصر بن حمد الهزاني",
+    "description": "Search for a specific poet by name (from TOC)",
+    "result_count": 3,
+    "anchor_hits": 1,
+    "top_result_text": "ولد النضافي عبدالله بن طلال بن رشيد",
+    "citation": "المصدر: manuscript07 | صفحة 20 | بيت 19 | [الصورة: manuscript07_p20.png] | [ثقة: 95%]"
+  },
+  {
+    "query": "الحمام",
+    "description": "Search for verses about doves",
+    "result_count": 0,
+    "anchor_hits": 2,
+    "top_result_text": "",
+    "citation": ""
+  },
+  {
+    "query": "الخيل",
+    "description": "Search for verses about horses — classical Nabati theme",
+    "result_count": 1,
+    "anchor_hits": 0,
+    "top_result_text": "قالوا عليه قلت لا نرجي الخيل",
+    "citation": "المصدر: manuscript07 | صفحة 8 | بيت 12 | [الصورة: manuscript07_p8.png] | [ثقة: 95%]"
+  }
+]
