@@ -1,0 +1,5 @@
+[server]
+# Why: Streamlit's watcher crawls every module in sys.modules, including
+# transformers vision submodules that require torchvision (not installed).
+# Blacklisting the venvs stops the ModuleNotFoundError flood at startup.
+folderWatchBlacklist = [".venv", "manuscripts"]

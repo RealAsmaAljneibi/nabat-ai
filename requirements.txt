@@ -1,0 +1,78 @@
+# NABAT-AI — Python dependencies
+# Install with: pip install -r requirements.txt
+# No GPU required — all LLM inference runs via hosted API (Together.ai or Groq).
+#
+# ════════════════════════════════════════════════════════════════════
+# BEFORE FIRST RUN — you need one free API key:
+#
+#   Option A — Together.ai (recommended):
+#     1. Go to https://api.together.xyz and sign up (free)
+#     2. Click your profile → "API Keys" → Create key → copy it
+#     3. In your .env file set:
+#          LLM_PROVIDER=together
+#          LLM_API_KEY=<paste key here>
+#
+#   Option B — Groq (also free, slightly faster):
+#     1. Go to https://console.groq.com and sign up (free)
+#     2. Click "API Keys" → Create key → copy it
+#     3. In your .env file set:
+#          LLM_PROVIDER=groq
+#          LLM_API_KEY=<paste key here>
+#
+#   No other API keys are needed to run the Scholar Workbench (Tab B).
+#   eScriptorium (Tab A / Archive Manager) uses a local Docker container,
+#   not an external API — it works without any key at all.
+#
+#   If you don't have a key yet, set LLM_PROVIDER=stub for an offline
+#   demo with canned responses (no key needed, answers are not real).
+# ════════════════════════════════════════════════════════════════════
+
+# ── Core framework ────────────────────────────────────────────────────
+streamlit>=1.35.0
+python-dotenv>=1.0.0
+
+# ── LangGraph (three-worker agent pipeline) ───────────────────────────
+langgraph>=0.2.0
+langchain-core>=0.2.0
+
+# ── LLM providers (hosted API — no local GPU) ────────────────────────
+together>=1.2.0          # Together.ai (primary: Qwen2.5-7B)
+groq>=0.9.0              # Groq (alternative provider)
+
+# ── Embedding + retrieval ─────────────────────────────────────────────
+sentence-transformers>=3.0.0   # GATE-AraBERT-v1 dense embeddings
+qdrant-client>=1.10.0          # File-backed vector store (no server needed)
+rank-bm25>=0.2.2               # BM25 sparse retrieval
+rapidfuzz>=3.9.0               # Fuzzy match for cross-link (M1)
+
+# ── Arabic NLP ────────────────────────────────────────────────────────
+langdetect>=1.0.9              # Language detection (Agent 1 Stage 1)
+# camel-tools>=1.5.0           # Optional: full CAMeL pipeline (heavy — commented out for portability)
+
+# ── Image processing + OCR ───────────────────────────────────────────
+Pillow>=11.1.0,<12.0.0         # Pin to range required by together; covers folio viewer + bounding boxes
+pytesseract>=0.3.10            # OCR for image-question input (Agent 1)
+# tesseract-lang-ara must be installed via OS package manager:
+#   macOS:  brew install tesseract tesseract-lang
+#   Ubuntu: apt-get install tesseract-ocr tesseract-ocr-ara
+opencv-python-headless>=4.9.0  # Operator helpers (bleed suppress, deskew)
+
+# ── PAGE-XML parsing ──────────────────────────────────────────────────
+lxml>=5.2.0                    # Fast XML parse for eScriptorium PAGE-XML
+
+# ── eScriptorium integration (Tab A — optional) ───────────────────────
+# escriptorium-connector>=0.1.0  # REST client for self-hosted eScriptorium (optional — comment out if install fails)
+
+# ── Visualisation ────────────────────────────────────────────────────
+plotly>=5.22.0                 # ColBERT token heatmap + retrieval score charts
+
+# ── Testing ───────────────────────────────────────────────────────────
+pytest>=8.2.0
+pytest-asyncio>=0.23.0
+
+# ── PDF ingestion (Al-Nassikh ingest pipeline) ────────────────────────
+pypdf>=4.2.0                   # PDF metadata + page count
+pdf2image>=1.17.0              # PDF → PNG pages at 300 DPI
+# poppler must be installed via OS package manager:
+#   macOS:  brew install poppler
+#   Ubuntu: apt-get install poppler-utils

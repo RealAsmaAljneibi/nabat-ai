@@ -1,0 +1,49 @@
+{
+  "total_anchors": 2222,
+  "coverage": {
+    "classified": 1843,
+    "abstained": 379,
+    "abstain_rate": 0.171
+  },
+  "genre_distribution": {
+    "غزل": 530,
+    "رثاء": 418,
+    "مديح": 123,
+    "فخر": 109,
+    "غزو": 542,
+    "حماسة": 23,
+    "هجاء": 25,
+    "حكمة": 28,
+    "وصف": 7,
+    "دينية": 38,
+    "غير_محدد": 379
+  },
+  "emotion_distribution": {
+    "longing": 72,
+    "grief": 64,
+    "joy": 14,
+    "pride": 3,
+    "anger": 2,
+    "love": 37,
+    "awe": 7,
+    "nostalgia": 43,
+    "hope": 3,
+    "fear": 6
+  },
+  "verses_with_any_emotion": 235,
+  "verses_with_occasion_field": 137,
+  "occasion_hint_used_count": 59,
+  "confidence_histogram": {
+    "0.0": 345,
+    "0.0-0.3": 34,
+    "0.3-0.6": 605,
+    "0.6-0.9": 1009,
+    "0.9-1.0": 229
+  },
+  "classifier_version": "heuristic_v1",
+  "notes": [
+    "No human-labelled gold set — we cannot report accuracy numbers.",
+    "Confidence is margin-based, not probabilistic. Treat it as a relative ranking.",
+    "The UI should surface 🔸 on any tag and explicitly state this is a keyword classifier."
+  ]
+}

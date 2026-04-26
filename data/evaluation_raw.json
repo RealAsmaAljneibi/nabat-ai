@@ -1,0 +1,1278 @@
+{
+  "run_date": "2026-04-25 22:33 UTC",
+  "provider": "stub",
+  "correctness": {
+    "citation_resolvability_rate": 1.0,
+    "citation_resolvability_target": 1.0,
+    "recall_at_5": 0.2308,
+    "recall_at_5_target": 0.75,
+    "refusal_precision_ooc": 1.0,
+    "refusal_precision_target": 0.9,
+    "reference_hit_rate": 0.7,
+    "reference_hit_rate_total": 20,
+    "reference_hit_rate_active": 14,
+    "crag_verdict_distribution": {
+      "Correct": 20
+    },
+    "non_refusal_count": 20,
+    "ooc_total": 20,
+    "ooc_refusal_count": 20
+  },
+  "robustness": {
+    "total_queries": 50,
+    "crag_requery_rate": 0.44,
+    "self_rag_retry_rate": 0.0,
+    "self_rag_budget_exhaustion_rate": 0.0,
+    "fallback_llm_rate": 0.0,
+    "retriever_drop_rate": 0.0,
+    "crag_requery_count": 22,
+    "self_rag_retry_count": 0
+  },
+  "efficiency": {
+    "p50_ms": 76.1,
+    "p95_ms": 139.3,
+    "mean_ms": 313.4,
+    "p50_target_ms": 4000,
+    "p95_target_ms": 8000,
+    "p50_meets_target": true,
+    "p95_meets_target": true,
+    "per_stage_avg_ms": {
+      "agent1_ms": 166.2,
+      "agent2_ms": 147.2
+    },
+    "sample_count": 50
+  },
+  "human_judgment": {
+    "instruction": "A Nabati poetry scholar reviews the 15 responses below on three axes: (1) Faithfulness — does every claim match a real manuscript passage? (2) Dialect Fidelity — is the Khaleeji register authentic? (3) Usefulness — would a researcher or enthusiast find this helpful? Score each 1 (poor) to 5 (excellent). Record notes in 'scholar_notes'.",
+    "sample_size": 15,
+    "responses": [
+      {
+        "query_id": "sq01",
+        "query_ar": "ما هي قصائد الخيل في الشعر النبطي الخليجي؟",
+        "final_response": "يعرض الأرشيف شاهداً ذا صلة: قم یابن ابوی ارکب علی کور هبا ع//له بین ابانات والانجاج مرباع [anchor_id:manuscript12_p378_r043c0]",
+        "citations_count": 1,
+        "likert_faithfulness": null,
+        "likert_dialect_fidelity": null,
+        "likert_usefulness": null,
+        "scholar_notes": ""
+      },
+      {
+        "query_id": "sq02",
+        "query_ar": "من هو الشاعر ابن ذريل وما أشهر قصائده؟",
+        "final_response": "يعرض الأرشيف شاهداً ذا صلة: قم یابن ابوی ارکب علی کور هبا ع//له بین ابانات والانجاج مرباع [anchor_id:manuscript12_p378_r043c0]",
+        "citations_count": 1,
+        "likert_faithfulness": null,
+        "likert_dialect_fidelity": null,
+        "likert_usefulness": null,
+        "scholar_notes": ""
+      },
+      {
+        "query_id": "sq03",
+        "query_ar": "ما معنى قصيدة عن الصبر في ديوان الغوينم؟",
+        "final_response": "يعرض الأرشيف شاهداً ذا صلة: قم یابن ابوی ارکب علی کور هبا ع//له بین ابانات والانجاج مرباع [anchor_id:manuscript12_p378_r043c0]",
+        "citations_count": 1,
+        "likert_faithfulness": null,
+        "likert_dialect_fidelity": null,
+        "likert_usefulness": null,
+        "scholar_notes": ""
+      },
+      {
+        "query_id": "sq04",
+        "query_ar": "ابحث عن أشعار الغزل في مخطوطة هوبر",
+        "final_response": "يعرض الأرشيف شاهداً ذا صلة: البارحه قامت عروسي تقل لى // ما يجمع الثنتين غير البخايت [anchor_id:manuscript01_p72_r012c0]",
+        "citations_count": 1,
+        "likert_faithfulness": null,
+        "likert_dialect_fidelity": null,
+        "likert_usefulness": null,
+        "scholar_notes": ""
+      },
+      {
+        "query_id": "sq05",
+        "query_ar": "قصائد الرحيل والسفر عند شعراء نجد",
+        "final_response": "يعرض الأرشيف شاهداً ذا صلة: قم یابن ابوی ارکب علی کور هبا ع//له بین ابانات والانجاج مرباع [anchor_id:manuscript12_p378_r043c0]",
+        "citations_count": 1,
+        "likert_faithfulness": null,
+        "likert_dialect_fidelity": null,
+        "likert_usefulness": null,
+        "scholar_notes": ""
+      },
+      {
+        "query_id": "sq06",
+        "query_ar": "ما هو مطلع قصيدة المهادي في وصف الناقة؟",
+        "final_response": "يعرض الأرشيف شاهداً ذا صلة: يقول المهادي والمهادى مهمل//وبي علة جمل الملا ما درى بها [anchor_id:manuscript01_p70_r002c0]",
+        "citations_count": 1,
+        "likert_faithfulness": null,
+        "likert_dialect_fidelity": null,
+        "likert_usefulness": null,
+        "scholar_notes": ""
+      },
+      {
+        "query_id": "sq07",
+        "query_ar": "أشعار عن القهوة والضيافة في الشعر الخليجي",
+        "final_response": "يعرض الأرشيف شاهداً ذا صلة: قم یابن ابوی ارکب علی کور هبا ع//له بین ابانات والانجاج مرباع [anchor_id:manuscript12_p378_r043c0]",
+        "citations_count": 1,
+        "likert_faithfulness": null,
+        "likert_dialect_fidelity": null,
+        "likert_usefulness": null,
+        "scholar_notes": ""
+      },
+      {
+        "query_id": "sq08",
+        "query_ar": "قصائد الفخر والحماسة لابن سبيّل",
+        "final_response": "يعرض الأرشيف شاهداً ذا صلة: قم یابن ابوی ارکب علی کور هبا ع//له بین ابانات والانجاج مرباع [anchor_id:manuscript12_p378_r043c0]",
+        "citations_count": 1,
+        "likert_faithfulness": null,
+        "likert_dialect_fidelity": null,
+        "likert_usefulness": null,
+        "scholar_notes": ""
+      },
+      {
+        "query_id": "sq09",
+        "query_ar": "ما هي الأوزان الشعرية الشائعة في الشعر النبطي؟",
+        "final_response": "يعرض الأرشيف شاهداً ذا صلة: قم یابن ابوی ارکب علی کور هبا ع//له بین ابانات والانجاج مرباع [anchor_id:manuscript12_p378_r043c0]",
+        "citations_count": 1,
+        "likert_faithfulness": null,
+        "likert_dialect_fidelity": null,
+        "likert_usefulness": null,
+        "scholar_notes": ""
+      },
+      {
+        "query_id": "sq10",
+        "query_ar": "وصف الصحراء في مخطوطات ابن يحيى",
+        "final_response": "يعرض الأرشيف شاهداً ذا صلة: قم یابن ابوی ارکب علی کور هبا ع//له بین ابانات والانجاج مرباع [anchor_id:manuscript12_p378_r043c0]",
+        "citations_count": 1,
+        "likert_faithfulness": null,
+        "likert_dialect_fidelity": null,
+        "likert_usefulness": null,
+        "scholar_notes": ""
+      },
+      {
+        "query_id": "sq11",
+        "query_ar": "ما هي أبيات الحكمة المشهورة في الشعر النبطي؟",
+        "final_response": "تحتوي المجموعة على **78** قصيدة مصنَّفة تحت **حكمة** (من أصل 1,502 قصيدة مفهرسة). المرتبة بين الأنواع المصنَّفة: #5 of 9. من أبرز الشعراء: محمد العبدالله القاضي، حميدان الشويعر، عبيد بن رشيد.\n\n---\n\nThe corpus carries **78** poems classified as **wisdom / gnomic verse (hikma)** (out of 1,502 indexed). Rank among classified genres: #5 of 9. Notable poets: محمد العبدالله القاضي, حميدان الشويعر, عبيد بن رشيد. (Classifier: heuristic_v1 silver baseline.)",
+        "citations_count": 1,
+        "likert_faithfulness": null,
+        "likert_dialect_fidelity": null,
+        "likert_usefulness": null,
+        "scholar_notes": ""
+      },
+      {
+        "query_id": "sq12",
+        "query_ar": "من قال بيت الشعر الذي يبدأ بـ يا دار سلمى",
+        "final_response": "يعرض الأرشيف شاهداً ذا صلة: يا ذا الحمام الي على الراس سياح [anchor_id:601-782_p178_r001c1]",
+        "citations_count": 1,
+        "likert_faithfulness": null,
+        "likert_dialect_fidelity": null,
+        "likert_usefulness": null,
+        "scholar_notes": ""
+      },
+      {
+        "query_id": "sq13",
+        "query_ar": "الشعر في مدح آل سعود في المخطوطات الخليجية",
+        "final_response": "يعرض الأرشيف شاهداً ذا صلة: ياركب حلوا بالبرا زوم زورها // تلَّوا معاذرها تعدل نحورها [anchor_id:manuscript06_p250_r007c0]",
+        "citations_count": 1,
+        "likert_faithfulness": null,
+        "likert_dialect_fidelity": null,
+        "likert_usefulness": null,
+        "scholar_notes": ""
+      },
+      {
+        "query_id": "sq14",
+        "query_ar": "ما هي قصائد الرثاء في ديوان الحسّاوي؟",
+        "final_response": "يعرض الأرشيف شاهداً ذا صلة: قم یابن ابوی ارکب علی کور هبا ع//له بین ابانات والانجاج مرباع [anchor_id:manuscript12_p378_r043c0]",
+        "citations_count": 1,
+        "likert_faithfulness": null,
+        "likert_dialect_fidelity": null,
+        "likert_usefulness": null,
+        "scholar_notes": ""
+      },
+      {
+        "query_id": "sq15",
+        "query_ar": "قصائد البحر والسفن عند شعراء الخليج",
+        "final_response": "يعرض الأرشيف شاهداً ذا صلة: قم یابن ابوی ارکب علی کور هبا ع//له بین ابانات والانجاج مرباع [anchor_id:manuscript12_p378_r043c0]",
+        "citations_count": 1,
+        "likert_faithfulness": null,
+        "likert_dialect_fidelity": null,
+        "likert_usefulness": null,
+        "scholar_notes": ""
+      }
+    ],
+    "aggregate": {
+      "mean_faithfulness": null,
+      "mean_dialect_fidelity": null,
+      "mean_usefulness": null
+    }
+  },
+  "cer_summary": {
+    "total_anchors": 0,
+    "high_cer_lt10pct": 0,
+    "med_cer_10_25pct": 0,
+    "low_cer_ge25pct": 0,
+    "high_pct": 0,
+    "med_pct": 0,
+    "low_pct": 0,
+    "note": "HIGH (<10% CER) anchors are RAG-safe; LOW (≥25%) are gated from synthesis"
+  },
+  "scholar_results": [
+    {
+      "fixture": {
+        "id": "sq01",
+        "query_ar": "ما هي قصائد الخيل في الشعر النبطي الخليجي؟",
+        "query_en": "What are the horse poems in Khaleeji Nabati poetry?",
+        "intent": "semantic",
+        "gold_anchor_ids": [
+          "manuscript06_p255_r033c0",
+          "manuscript06_p255_r001c0",
+          "manuscript06_p252_r026c0",
+          "manuscript06_p251_r022c0"
+        ],
+        "gold_poet": null,
+        "gold_volume": null,
+        "gold_page": null,
+        "notes": "Theme query — should retrieve multiple equestrian verse passages"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 11371.213084028568,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript12_p378_r043c0"
+      ],
+      "rrf_top5_anchor_ids": [
+        "manuscript12_p378_r043c0",
+        "reference_ibn_khaldoun_p022_para01",
+        "reference_ibn_khaldoun_p004_para05",
+        "manuscript01_p71_r006c0",
+        "manuscript05_p301_r047c0",
+        "reference_semiotics_p028_para05",
+        "manuscript05_p303_r012c0",
+        "reference_ibn_khaldoun_p003_para01",
+        "reference_ibn_khaldoun_p002_para01",
+        "",
+        "manuscript05_p303_r047c0",
+        "601-782_p178_r003c0",
+        "reference_ibn_khaldoun_p001_para01",
+        "manuscript06_p252_r042c0",
+        "reference_ibn_khaldoun_p018_para03",
+        "reference_ibn_khaldoun_p022_para02",
+        "manuscript06_p250_r010c0",
+        "reference_ibn_khaldoun_p017_para04",
+        "manuscript06_p254_r022c0",
+        "reference_ibn_khaldoun_p002_para04"
+      ]
+    },
+    {
+      "fixture": {
+        "id": "sq02",
+        "query_ar": "من هو الشاعر ابن ذريل وما أشهر قصائده؟",
+        "query_en": "Who is the poet Ibn Dhareel and what are his most famous poems?",
+        "intent": "factual",
+        "gold_anchor_ids": [],
+        "gold_poet": "ابن ذريل",
+        "gold_volume": null,
+        "gold_page": null,
+        "notes": "Poet bio + verse query — should retrieve bio from poets_bio.json"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 79.50662501389161,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript12_p378_r043c0"
+      ],
+      "rrf_top5_anchor_ids": [
+        "manuscript12_p378_r043c0",
+        "reference_desert_culture_p018_para02",
+        "reference_ibn_khaldoun_p009_para02",
+        "manuscript01_p71_r006c0",
+        "manuscript05_p301_r047c0",
+        "reference_desert_culture_p035_para04",
+        "manuscript05_p303_r012c0",
+        "reference_desert_culture_p022_para04",
+        "reference_ibn_khaldoun_p002_para04",
+        "manuscript05_p303_r047c0",
+        "reference_semiotics_p028_para05",
+        "601-782_p178_r003c0",
+        "reference_ibn_khaldoun_p008_para05",
+        "manuscript06_p252_r042c0",
+        "reference_semiotics_p024_para01",
+        "reference_ibn_khaldoun_p001_para03",
+        "manuscript06_p250_r010c0",
+        "reference_semiotics_p020_para00",
+        "manuscript06_p254_r022c0",
+        "reference_semiotics_p018_para05"
+      ]
+    },
+    {
+      "fixture": {
+        "id": "sq03",
+        "query_ar": "ما معنى قصيدة عن الصبر في ديوان الغوينم؟",
+        "query_en": "What is the meaning of a patience poem in Al-Ghuwainem's collection?",
+        "intent": "interpretive",
+        "gold_anchor_ids": [],
+        "gold_poet": "الغوينم",
+        "gold_volume": null,
+        "gold_page": null,
+        "notes": "Interpretive intent — should activate HyDE passage generation"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 76.64658298017457,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript12_p378_r043c0"
+      ],
+      "rrf_top5_anchor_ids": [
+        "manuscript12_p378_r043c0",
+        "reference_ibn_khaldoun_p017_para01",
+        "",
+        "manuscript01_p71_r006c0",
+        "manuscript05_p301_r047c0",
+        "manuscript05_p303_r012c0",
+        "reference_desert_culture_p010_para02",
+        "reference_desert_culture_p036_para01",
+        "manuscript05_p303_r047c0",
+        "reference_ibn_khaldoun_p018_para03",
+        "601-782_p179_r010c0",
+        "601-782_p178_r003c0",
+        "manuscript05_p305_r036c0",
+        "manuscript06_p252_r042c0",
+        "manuscript06_p250_r003c0",
+        "manuscript05_p304_r046c0",
+        "manuscript06_p250_r010c0",
+        "manuscript05_p305_r035c0",
+        "manuscript06_p254_r022c0",
+        "manuscript06_p255_r040c0"
+      ]
+    },
+    {
+      "fixture": {
+        "id": "sq04",
+        "query_ar": "ابحث عن أشعار الغزل في مخطوطة هوبر",
+        "query_en": "Find love poetry in the Huber manuscript",
+        "intent": "semantic",
+        "gold_anchor_ids": [
+          "manuscript01_p72_r031c0",
+          "manuscript01_p72_r030c0",
+          "manuscript01_p72_r029c0",
+          "manuscript01_p72_r028c0"
+        ],
+        "gold_poet": null,
+        "gold_volume": "huber_1",
+        "gold_page": null,
+        "notes": "Manuscript-scoped query — self_query should extract manuscript_short_key=huber_1"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 26.065124955493957,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript01_p72_r012c0"
+      ],
+      "rrf_top5_anchor_ids": [
+        "manuscript01_p72_r012c0"
+      ]
+    },
+    {
+      "fixture": {
+        "id": "sq05",
+        "query_ar": "قصائد الرحيل والسفر عند شعراء نجد",
+        "query_en": "Departure and travel poems among Najdi poets",
+        "intent": "semantic",
+        "gold_anchor_ids": [
+          "manuscript12_p378_r017c0",
+          "manuscript06_p252_r012c0"
+        ],
+        "gold_poet": null,
+        "gold_volume": null,
+        "gold_page": null,
+        "notes": "Geographic + theme query — dialect filter najdi should fire"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 68.04016698151827,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript12_p378_r043c0"
+      ],
+      "rrf_top5_anchor_ids": [
+        "manuscript12_p378_r043c0",
+        "reference_desert_culture_p031_para03",
+        "reference_semiotics_p024_para02",
+        "manuscript01_p71_r006c0",
+        "manuscript05_p301_r047c0",
+        "manuscript12_p378_r017c0",
+        "manuscript05_p303_r012c0",
+        "reference_desert_culture_p035_para03",
+        "reference_semiotics_p028_para05",
+        "manuscript05_p303_r047c0",
+        "reference_ibn_khaldoun_p015_para04",
+        "601-782_p178_r003c0",
+        "reference_desert_culture_p001_para03",
+        "manuscript06_p252_r042c0",
+        "reference_desert_culture_p018_para02",
+        "manuscript06_p250_r010c0",
+        "reference_ibn_khaldoun_p019_para01",
+        "manuscript05_p302_r047c0",
+        "manuscript06_p254_r022c0",
+        "manuscript05_p303_r050c0"
+      ]
+    },
+    {
+      "fixture": {
+        "id": "sq06",
+        "query_ar": "ما هو مطلع قصيدة المهادي في وصف الناقة؟",
+        "query_en": "What is the opening line of Al-Muhadi's poem describing the camel?",
+        "intent": "factual",
+        "gold_anchor_ids": [
+          "manuscript06_p252_r009c0",
+          "manuscript01_p70_r002c0",
+          "601-782_p178_r024c1"
+        ],
+        "gold_poet": "المهادي",
+        "gold_volume": null,
+        "gold_page": null,
+        "notes": "Exact matla retrieval — should return verbatim matla_text from anchor"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 20.14245797181502,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript01_p70_r002c0"
+      ],
+      "rrf_top5_anchor_ids": [
+        "manuscript01_p70_r002c0",
+        "manuscript06_p252_r009c0",
+        "601-782_p178_r024c1"
+      ]
+    },
+    {
+      "fixture": {
+        "id": "sq07",
+        "query_ar": "أشعار عن القهوة والضيافة في الشعر الخليجي",
+        "query_en": "Poems about coffee and hospitality in Gulf poetry",
+        "intent": "semantic",
+        "gold_anchor_ids": [],
+        "gold_poet": null,
+        "gold_volume": null,
+        "gold_page": null,
+        "notes": "Cultural theme — should hit multiple manuscripts"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 70.29454095754772,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript12_p378_r043c0"
+      ],
+      "rrf_top5_anchor_ids": [
+        "manuscript12_p378_r043c0",
+        "reference_ibn_khaldoun_p019_para01",
+        "reference_ibn_khaldoun_p018_para00",
+        "manuscript01_p71_r006c0",
+        "manuscript05_p301_r047c0",
+        "reference_ibn_khaldoun_p003_para01",
+        "manuscript05_p303_r012c0",
+        "reference_ibn_khaldoun_p023_para01",
+        "reference_ibn_khaldoun_p019_para02",
+        "manuscript05_p303_r047c0",
+        "reference_ibn_khaldoun_p004_para05",
+        "601-782_p178_r003c0",
+        "reference_desert_culture_p024_para04",
+        "manuscript06_p252_r042c0",
+        "reference_ibn_khaldoun_p018_para04",
+        "reference_ibn_khaldoun_p008_para02",
+        "manuscript06_p250_r010c0",
+        "reference_desert_culture_p016_para05",
+        "manuscript06_p254_r022c0",
+        "reference_ibn_khaldoun_p022_para00"
+      ]
+    },
+    {
+      "fixture": {
+        "id": "sq08",
+        "query_ar": "قصائد الفخر والحماسة لابن سبيّل",
+        "query_en": "Pride and martial poems by Ibn Sbayyal",
+        "intent": "semantic",
+        "gold_anchor_ids": [
+          "manuscript06_p253_r048c0",
+          "manuscript06_p253_r046c0",
+          "manuscript06_p253_r045c0",
+          "manuscript06_p253_r044c0"
+        ],
+        "gold_poet": "ابن سبيّل",
+        "gold_volume": null,
+        "gold_page": null,
+        "notes": "Poet + theme — should filter by poet_name and theme simultaneously"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 72.943416016642,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript12_p378_r043c0"
+      ],
+      "rrf_top5_anchor_ids": [
+        "manuscript12_p378_r043c0",
+        "reference_desert_culture_p041_para03",
+        "reference_desert_culture_p036_para02",
+        "manuscript01_p71_r006c0",
+        "manuscript05_p301_r047c0",
+        "reference_desert_culture_p040_para01",
+        "manuscript05_p303_r012c0",
+        "reference_desert_culture_p035_para04",
+        "reference_desert_culture_p018_para02",
+        "manuscript05_p303_r047c0",
+        "reference_suloom_alarab_p010_para02",
+        "601-782_p178_r003c0",
+        "reference_desert_culture_p031_para03",
+        "manuscript06_p252_r042c0",
+        "reference_ibn_khaldoun_p002_para04",
+        "manuscript06_p253_r041c0",
+        "manuscript06_p250_r010c0",
+        "reference_desert_culture_p035_para03",
+        "manuscript06_p254_r022c0",
+        "reference_desert_culture_p036_para01"
+      ]
+    },
+    {
+      "fixture": {
+        "id": "sq09",
+        "query_ar": "ما هي الأوزان الشعرية الشائعة في الشعر النبطي؟",
+        "query_en": "What are the common meters in Nabati poetry?",
+        "intent": "factual",
+        "gold_anchor_ids": [],
+        "gold_poet": null,
+        "gold_volume": null,
+        "gold_page": null,
+        "notes": "Meta-poetic question — expects factual synthesis from corpus"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 69.49137500487268,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript12_p378_r043c0"
+      ],
+      "rrf_top5_anchor_ids": [
+        "manuscript12_p378_r043c0",
+        "reference_ibn_khaldoun_p001_para01",
+        "reference_semiotics_p021_para02",
+        "manuscript01_p71_r006c0",
+        "manuscript05_p301_r047c0",
+        "reference_semiotics_p028_para05",
+        "manuscript05_p303_r012c0",
+        "reference_ibn_khaldoun_p019_para01",
+        "reference_ibn_khaldoun_p015_para01",
+        "manuscript05_p303_r047c0",
+        "reference_ibn_khaldoun_p020_para03",
+        "601-782_p178_r003c0",
+        "reference_ibn_khaldoun_p020_para04",
+        "manuscript06_p252_r042c0",
+        "reference_ibn_khaldoun_p018_para03",
+        "reference_ibn_khaldoun_p022_para02",
+        "manuscript06_p250_r010c0",
+        "reference_semiotics_p028_para01",
+        "manuscript06_p254_r022c0",
+        "reference_semiotics_p024_para02"
+      ]
+    },
+    {
+      "fixture": {
+        "id": "sq10",
+        "query_ar": "وصف الصحراء في مخطوطات ابن يحيى",
+        "query_en": "Desert descriptions in the Ibn Yahya manuscripts",
+        "intent": "semantic",
+        "gold_anchor_ids": [
+          "manuscript12_p379_r047c0",
+          "manuscript12_p379_r046c0",
+          "manuscript12_p379_r045c0",
+          "manuscript12_p379_r044c0"
+        ],
+        "gold_poet": null,
+        "gold_volume": "ibn_yahya_001_200",
+        "gold_page": null,
+        "notes": "Manuscript series query — should resolve to multiple ibn_yahya volumes"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 120.72674999944866,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript12_p378_r043c0"
+      ],
+      "rrf_top5_anchor_ids": [
+        "manuscript12_p378_r043c0",
+        "manuscript10_p2_r002c0",
+        "601-782_p181_r025c0",
+        "manuscript01_p71_r006c0",
+        "601-782_p181_r027c0",
+        "manuscript05_p301_r047c0",
+        "601-782_p178_r009c1",
+        "manuscript05_p303_r012c0",
+        "reference_ibn_khaldoun_p012_para02",
+        "manuscript05_p303_r047c0",
+        "reference_ibn_khaldoun_p008_para03",
+        "601-782_p178_r003c0",
+        "reference_desert_culture_p023_para00",
+        "manuscript06_p252_r042c0",
+        "manuscript03_p87_r026c0",
+        "601-782_p178_r007c1",
+        "manuscript06_p250_r010c0",
+        "reference_semiotics_p024_para04",
+        "manuscript06_p254_r022c0",
+        "manuscript18_p26_r011c1"
+      ]
+    },
+    {
+      "fixture": {
+        "id": "sq11",
+        "query_ar": "ما هي أبيات الحكمة المشهورة في الشعر النبطي؟",
+        "query_en": "What are the famous wisdom verses in Nabati poetry?",
+        "intent": "semantic",
+        "gold_anchor_ids": [
+          "manuscript21_p2_r022c0",
+          "manuscript18_p26_r012c0",
+          "manuscript18_p25_r026c0",
+          "manuscript18_p24_r013c0"
+        ],
+        "gold_poet": null,
+        "gold_volume": null,
+        "gold_page": null,
+        "notes": "Wisdom/hikma theme — broad semantic search across corpus"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 0.9695829940028489,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "anchor_registry_phase4_enriched.json"
+      ],
+      "rrf_top5_anchor_ids": []
+    },
+    {
+      "fixture": {
+        "id": "sq12",
+        "query_ar": "من قال بيت الشعر الذي يبدأ بـ يا دار سلمى",
+        "query_en": "Who wrote the verse that starts with 'O abode of Salma'",
+        "intent": "factual",
+        "gold_anchor_ids": [],
+        "gold_poet": null,
+        "gold_volume": null,
+        "gold_page": null,
+        "notes": "Matla identification — exact text match should dominate BM25 score"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 74.37116699293256,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "601-782_p178_r001c1"
+      ],
+      "rrf_top5_anchor_ids": [
+        "601-782_p178_r001c1",
+        "manuscript12_p378_r043c0",
+        "reference_suloom_alarab_p022_para01",
+        "manuscript21_p2_r033c0",
+        "manuscript01_p71_r006c0",
+        "manuscript05_p301_r047c0",
+        "manuscript05_p303_r012c0",
+        "manuscript05_p302_r021c0",
+        "manuscript05_p303_r047c0",
+        "manuscript01_p70_r009c0",
+        "601-782_p178_r003c0",
+        "manuscript01_p72_r014c0",
+        "601-782_p181_r021c0",
+        "manuscript06_p252_r042c0",
+        "manuscript10_p1_r030c0",
+        "601-782_p181_r023c0",
+        "manuscript06_p250_r010c0",
+        "manuscript06_p254_r022c0",
+        "manuscript10_p1_r028c0",
+        "601-782_p181_r020c1"
+      ]
+    },
+    {
+      "fixture": {
+        "id": "sq13",
+        "query_ar": "الشعر في مدح آل سعود في المخطوطات الخليجية",
+        "query_en": "Poetry praising Al Saud in Gulf manuscripts",
+        "intent": "semantic",
+        "gold_anchor_ids": [],
+        "gold_poet": null,
+        "gold_volume": null,
+        "gold_page": null,
+        "notes": "Political panegyric — sensitive content but historically documented"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 26.301249978132546,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript06_p250_r007c0"
+      ],
+      "rrf_top5_anchor_ids": [
+        "manuscript06_p250_r007c0",
+        "manuscript06_p253_r028c0",
+        "manuscript05_p301_r012c0",
+        "manuscript05_p304_r016c0",
+        "manuscript12_p377_r019c0",
+        "manuscript06_p250_r021c0",
+        "manuscript05_p304_r019c0",
+        "manuscript06_p252_r018c0",
+        "manuscript01_p72_r007c0",
+        "manuscript01_p72_r008c0",
+        "manuscript01_p70_r011c0",
+        "601-782_p178_r020c0",
+        "601-782_p181_r022c0",
+        "manuscript01_p70_r005c0",
+        "manuscript05_p302_r034c0",
+        "manuscript04_p59_r007c0",
+        "manuscript05_p302_r028c0",
+        "manuscript05_p301_r016c0",
+        "manuscript03_p87_r041c0",
+        "manuscript12_p379_r016c0"
+      ]
+    },
+    {
+      "fixture": {
+        "id": "sq14",
+        "query_ar": "ما هي قصائد الرثاء في ديوان الحسّاوي؟",
+        "query_en": "What are the elegy poems in Al-Hassawi's collection?",
+        "intent": "semantic",
+        "gold_anchor_ids": [
+          "manuscript03_p88_r002c0",
+          "manuscript03_p88_r001c0",
+          "manuscript03_p88_r000c0",
+          "manuscript03_p87_r051c0"
+        ],
+        "gold_poet": "الحسّاوي",
+        "gold_volume": null,
+        "gold_page": null,
+        "notes": "Poet + genre (ritha) — should retrieve elegies attributed to Al-Hassawi"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 71.56820897944272,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript12_p378_r043c0"
+      ],
+      "rrf_top5_anchor_ids": [
+        "",
+        "manuscript12_p378_r043c0",
+        "manuscript01_p71_r006c0",
+        "manuscript05_p301_r047c0",
+        "reference_desert_culture_p031_para03",
+        "manuscript05_p303_r012c0",
+        "reference_ibn_khaldoun_p018_para03",
+        "reference_ibn_khaldoun_p002_para04",
+        "manuscript05_p303_r047c0",
+        "reference_desert_culture_p036_para01",
+        "601-782_p178_r003c0",
+        "reference_desert_culture_p018_para02",
+        "manuscript06_p252_r042c0",
+        "manuscript06_p255_r036c0",
+        "manuscript05_p303_r003c0",
+        "manuscript06_p250_r010c0",
+        "reference_semiotics_p028_para05",
+        "manuscript06_p254_r022c0",
+        "reference_ibn_khaldoun_p003_para01",
+        "manuscript06_p255_r040c0"
+      ]
+    },
+    {
+      "fixture": {
+        "id": "sq15",
+        "query_ar": "قصائد البحر والسفن عند شعراء الخليج",
+        "query_en": "Sea and sailing poems among Gulf poets",
+        "intent": "semantic",
+        "gold_anchor_ids": [
+          "manuscript12_p378_r038c0",
+          "601-782_p179_r007c1"
+        ],
+        "gold_poet": null,
+        "gold_volume": null,
+        "gold_page": null,
+        "notes": "Maritime theme — cross-manuscript semantic search"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 72.82566704088822,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript12_p378_r043c0"
+      ],
+      "rrf_top5_anchor_ids": [
+        "manuscript12_p378_r043c0",
+        "reference_desert_culture_p031_para03",
+        "reference_semiotics_p024_para02",
+        "manuscript01_p71_r006c0",
+        "manuscript05_p301_r047c0",
+        "reference_semiotics_p028_para05",
+        "manuscript05_p303_r012c0",
+        "reference_ibn_khaldoun_p015_para04",
+        "reference_desert_culture_p035_para03",
+        "manuscript05_p303_r047c0",
+        "reference_desert_culture_p018_para02",
+        "601-782_p178_r003c0",
+        "reference_ibn_khaldoun_p002_para04",
+        "manuscript06_p252_r042c0",
+        "reference_suloom_alarab_p015_para00",
+        "manuscript10_p3_r036c0",
+        "manuscript06_p250_r010c0",
+        "manuscript10_p1_r013c0",
+        "manuscript06_p254_r022c0",
+        "reference_ibn_khaldoun_p001_para03"
+      ]
+    },
+    {
+      "fixture": {
+        "id": "sq16",
+        "query_ar": "ما هو مفهوم الوفاء في الشعر النبطي الخليجي؟",
+        "query_en": "What is the concept of loyalty (wafa) in Khaleeji Nabati poetry?",
+        "intent": "interpretive",
+        "gold_anchor_ids": [
+          "manuscript12_p378_r037c0",
+          "manuscript06_p250_r009c0",
+          "manuscript05_p301_r020c0"
+        ],
+        "gold_poet": null,
+        "gold_volume": null,
+        "gold_page": null,
+        "notes": "Abstract concept — interpretive intent should trigger HyDE"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 73.10649997089058,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript12_p378_r043c0"
+      ],
+      "rrf_top5_anchor_ids": [
+        "manuscript12_p378_r043c0",
+        "reference_ibn_khaldoun_p021_para03",
+        "reference_ibn_khaldoun_p004_para05",
+        "manuscript01_p71_r006c0",
+        "",
+        "manuscript05_p301_r047c0",
+        "manuscript05_p303_r012c0",
+        "reference_ibn_khaldoun_p001_para01",
+        "reference_ibn_khaldoun_p018_para03",
+        "manuscript05_p303_r047c0",
+        "reference_ibn_khaldoun_p021_para02",
+        "601-782_p178_r003c0",
+        "reference_ibn_khaldoun_p017_para04",
+        "manuscript06_p252_r042c0",
+        "reference_ibn_khaldoun_p001_para02",
+        "reference_ibn_khaldoun_p022_para00",
+        "manuscript06_p250_r010c0",
+        "reference_ibn_khaldoun_p020_para03",
+        "manuscript06_p254_r022c0",
+        "reference_ibn_khaldoun_p022_para01"
+      ]
+    },
+    {
+      "fixture": {
+        "id": "sq17",
+        "query_ar": "أشعار العيد والأفراح في المخطوطات الخليجية",
+        "query_en": "Celebration and Eid poems in Gulf manuscripts",
+        "intent": "semantic",
+        "gold_anchor_ids": [
+          "manuscript21_p2_r017c0",
+          "manuscript12_p378_r045c0",
+          "manuscript12_p378_r009c0",
+          "manuscript12_p377_r034c0"
+        ],
+        "gold_poet": null,
+        "gold_volume": null,
+        "gold_page": null,
+        "notes": "Celebratory theme — should return verse-level chunks"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 71.48900005267933,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript12_p378_r043c0"
+      ],
+      "rrf_top5_anchor_ids": [
+        "manuscript12_p378_r043c0",
+        "reference_ibn_khaldoun_p018_para04",
+        "reference_desert_culture_p024_para04",
+        "manuscript01_p71_r006c0",
+        "manuscript05_p301_r047c0",
+        "reference_ibn_khaldoun_p013_para03",
+        "manuscript05_p303_r012c0",
+        "reference_ibn_khaldoun_p014_para02",
+        "reference_ibn_khaldoun_p016_para01",
+        "manuscript05_p303_r047c0",
+        "reference_ibn_khaldoun_p014_para04",
+        "601-782_p178_r003c0",
+        "reference_ibn_khaldoun_p011_para05",
+        "manuscript06_p252_r042c0",
+        "reference_ibn_khaldoun_p003_para01",
+        "reference_ibn_khaldoun_p013_para01",
+        "manuscript06_p250_r010c0",
+        "reference_ibn_khaldoun_p019_para01",
+        "manuscript04_p59_r023c0",
+        "manuscript06_p254_r022c0"
+      ]
+    },
+    {
+      "fixture": {
+        "id": "sq18",
+        "query_ar": "كيف وصف شعراء الخليج القمر في قصائدهم؟",
+        "query_en": "How did Gulf poets describe the moon in their poems?",
+        "intent": "interpretive",
+        "gold_anchor_ids": [
+          "manuscript12_p379_r031c0",
+          "manuscript10_p1_r027c0",
+          "manuscript06_p253_r051c0",
+          "manuscript06_p251_r021c0"
+        ],
+        "gold_poet": null,
+        "gold_volume": null,
+        "gold_page": null,
+        "notes": "Natural imagery — broad interpretive search across corpus"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 23.69187498698011,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript12_p377_r007c0"
+      ],
+      "rrf_top5_anchor_ids": [
+        "manuscript12_p377_r007c0",
+        "manuscript06_p250_r011c0",
+        "manuscript05_p301_r037c0",
+        "manuscript06_p252_r012c0",
+        "manuscript12_p379_r031c0",
+        "manuscript05_p305_r022c0",
+        "manuscript03_p87_r026c0",
+        "manuscript10_p2_r002c0",
+        "manuscript05_p301_r050c0",
+        "manuscript12_p378_r036c0",
+        "manuscript18_p26_r011c1",
+        "manuscript05_p302_r010c0",
+        "manuscript06_p252_r008c0",
+        "manuscript06_p250_r043c0",
+        "manuscript12_p379_r000c0",
+        "manuscript05_p305_r040c0"
+      ]
+    },
+    {
+      "fixture": {
+        "id": "sq19",
+        "query_ar": "قصائد الغزل العذري في الشعر النبطي",
+        "query_en": "Chaste love poetry (ghazal udhari) in Nabati poetry",
+        "intent": "semantic",
+        "gold_anchor_ids": [
+          "manuscript22_p3_r010c0",
+          "manuscript22_p2_r010c0",
+          "manuscript21_p3_r024c0",
+          "manuscript21_p3_r016c0"
+        ],
+        "gold_poet": null,
+        "gold_volume": null,
+        "gold_page": null,
+        "notes": "Ghazal subgenre — dense retrieval should distinguish from romantic ghazal"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 27.772041969001293,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript05_p302_r031c0"
+      ],
+      "rrf_top5_anchor_ids": [
+        "manuscript05_p302_r031c0",
+        "manuscript12_p377_r042c0",
+        "manuscript06_p251_r039c0",
+        "601-782_p181_r015c0",
+        "manuscript05_p303_r047c0",
+        "manuscript06_p251_r008c0",
+        "manuscript10_p2_r014c0",
+        "manuscript06_p252_r037c0",
+        "manuscript06_p254_r049c0",
+        "manuscript05_p303_r051c0",
+        "manuscript05_p302_r049c0",
+        "manuscript06_p253_r037c0",
+        "manuscript06_p253_r048c0",
+        "manuscript06_p253_r003c0",
+        "manuscript12_p379_r002c0",
+        "manuscript05_p303_r027c0",
+        "manuscript06_p253_r024c0",
+        "manuscript06_p253_r036c0",
+        "manuscript06_p254_r029c0",
+        "601-782_p181_r007c1"
+      ]
+    },
+    {
+      "fixture": {
+        "id": "sq20",
+        "query_ar": "ما هي الكلمات الخليجية الشائعة في الشعر النبطي التي لا تُفهم في الفصحى؟",
+        "query_en": "What are common Khaleeji words in Nabati poetry that don't translate to MSA?",
+        "intent": "factual",
+        "gold_anchor_ids": [],
+        "gold_poet": null,
+        "gold_volume": null,
+        "gold_page": null,
+        "notes": "Dialectal lexicography question — should surface al_mantuq variant in response"
+      },
+      "is_refusal": false,
+      "elapsed_ms": 72.50275003025308,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript12_p378_r043c0"
+      ],
+      "rrf_top5_anchor_ids": [
+        "manuscript12_p378_r043c0",
+        "reference_ibn_khaldoun_p001_para02",
+        "reference_ibn_khaldoun_p001_para01",
+        "manuscript01_p71_r006c0",
+        "manuscript05_p301_r047c0",
+        "reference_ibn_khaldoun_p023_para01",
+        "manuscript05_p303_r012c0",
+        "reference_ibn_khaldoun_p017_para04",
+        "reference_ibn_khaldoun_p022_para02",
+        "manuscript05_p303_r047c0",
+        "reference_ibn_khaldoun_p002_para01",
+        "601-782_p178_r003c0",
+        "reference_ibn_khaldoun_p019_para02",
+        "manuscript06_p252_r042c0",
+        "reference_ibn_khaldoun_p015_para01",
+        "reference_ibn_khaldoun_p022_para01",
+        "manuscript06_p250_r010c0",
+        "reference_ibn_khaldoun_p011_para05",
+        "manuscript06_p254_r022c0",
+        "reference_ibn_khaldoun_p021_para02"
+      ]
+    }
+  ],
+  "ooc_results": [
+    {
+      "fixture": {
+        "id": "ooc01",
+        "query_ar": "ما هي قصائد أبي نواس المشهورة؟",
+        "query_en": "What are the famous poems of Abu Nuwas?",
+        "expected_refusal": true,
+        "refusal_reason": "Abu Nuwas is Abbasid classical poet — outside Khaleeji Nabati corpus",
+        "notes": "Classic Abbasid poet not in anchor_registry_phase4"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 134.453458013013
+    },
+    {
+      "fixture": {
+        "id": "ooc02",
+        "query_ar": "ترجم قصيدة المتنبي 'على قدر أهل العزم'",
+        "query_en": "Translate Al-Mutanabbi's poem 'To the extent of the people of resolve'",
+        "expected_refusal": true,
+        "refusal_reason": "Al-Mutanabbi is classical Abbasid — not in corpus",
+        "notes": "Famous classical poet with no entries in Phase-4 registry"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 136.615208000876
+    },
+    {
+      "fixture": {
+        "id": "ooc03",
+        "query_ar": "من هو شاعر اليمن المشهور في العصر الجاهلي؟",
+        "query_en": "Who is the famous Yemeni poet of the pre-Islamic era?",
+        "expected_refusal": true,
+        "refusal_reason": "Pre-Islamic Yemeni poetry outside Khaleeji Nabati scope and corpus",
+        "notes": "Wrong time period and region"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 139.33462498243898
+    },
+    {
+      "fixture": {
+        "id": "ooc04",
+        "query_ar": "ما رأي محمود درويش في القضية الفلسطينية؟",
+        "query_en": "What does Mahmoud Darwish say about the Palestinian cause?",
+        "expected_refusal": true,
+        "refusal_reason": "Mahmoud Darwish is Palestinian modern poet — not in corpus",
+        "notes": "Contemporary Arab poet, entirely different tradition and region"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 192.8920409991406
+    },
+    {
+      "fixture": {
+        "id": "ooc05",
+        "query_ar": "شرح قصيدة 'نشيد الأناشيد' من الإنجيل",
+        "query_en": "Explain the Song of Songs from the Bible",
+        "expected_refusal": true,
+        "refusal_reason": "Biblical text — completely outside scope",
+        "notes": "Non-Arabic, non-Nabati source"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 134.1799579677172
+    },
+    {
+      "fixture": {
+        "id": "ooc06",
+        "query_ar": "ما هي قصيدة إليزابيث براوننج الشهيرة عن الحب؟",
+        "query_en": "What is Elizabeth Barrett Browning's famous love poem?",
+        "expected_refusal": true,
+        "refusal_reason": "English Victorian poetry — outside Arabic Nabati corpus",
+        "notes": "English language poet entirely outside scope"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 86.92254201741889
+    },
+    {
+      "fixture": {
+        "id": "ooc07",
+        "query_ar": "ما هو ديوان نزار قباني الأكثر مبيعاً؟",
+        "query_en": "What is Nizar Qabbani's best-selling collection?",
+        "expected_refusal": true,
+        "refusal_reason": "Nizar Qabbani is Syrian modern poet — not in Khaleeji Nabati corpus",
+        "notes": "Modern Arabic poet from wrong region and era"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 134.77462501032278
+    },
+    {
+      "fixture": {
+        "id": "ooc08",
+        "query_ar": "اقرأ لي من صحيح البخاري",
+        "query_en": "Read me something from Sahih Al-Bukhari",
+        "expected_refusal": true,
+        "refusal_reason": "Hadith collection — not poetry and not in corpus",
+        "notes": "Wrong domain entirely"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 133.63941601710394
+    },
+    {
+      "fixture": {
+        "id": "ooc09",
+        "query_ar": "ما هي القصيدة رقم 47 في مخطوطة manuscript99؟",
+        "query_en": "What is poem 47 in manuscript99?",
+        "expected_refusal": true,
+        "refusal_reason": "manuscript99 does not exist in registry",
+        "notes": "Fabricated manuscript ID — should trigger scoped refusal"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 134.54620901029557
+    },
+    {
+      "fixture": {
+        "id": "ooc10",
+        "query_ar": "ترجم قصيدة هوميروس إلياذة إلى العربية",
+        "query_en": "Translate Homer's Iliad into Arabic",
+        "expected_refusal": true,
+        "refusal_reason": "Ancient Greek epic — outside corpus",
+        "notes": "Wrong language, wrong era, wrong tradition"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 135.72858303086832
+    },
+    {
+      "fixture": {
+        "id": "ooc11",
+        "query_ar": "ابحث عن شعر الجاحظ عن الحيوانات",
+        "query_en": "Find Al-Jahiz's animal poetry",
+        "expected_refusal": true,
+        "refusal_reason": "Al-Jahiz wrote prose (Kitab al-Hayawan) not Nabati verse",
+        "notes": "Wrong genre even within Arabic tradition"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 135.56191697716713
+    },
+    {
+      "fixture": {
+        "id": "ooc12",
+        "query_ar": "من كتب القرآن الكريم؟",
+        "query_en": "Who wrote the Quran?",
+        "expected_refusal": true,
+        "refusal_reason": "Religious doctrine question — outside corpus scope",
+        "notes": "Not a poetry retrieval task at all"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 133.03091702982783
+    },
+    {
+      "fixture": {
+        "id": "ooc13",
+        "query_ar": "ما هي قصائد الشاعر التونسي أبو القاسم الشابي؟",
+        "query_en": "What are the poems of Tunisian poet Abu al-Qasim al-Shabbi?",
+        "expected_refusal": true,
+        "refusal_reason": "North African modern poet — not in Khaleeji Nabati corpus",
+        "notes": "Wrong region and era, though 'إرادة الحياة' is famous"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 130.704874987714
+    },
+    {
+      "fixture": {
+        "id": "ooc14",
+        "query_ar": "هل يمكنك كتابة قصيدة نبطية جديدة عن الذكاء الاصطناعي؟",
+        "query_en": "Can you write a new Nabati poem about artificial intelligence?",
+        "expected_refusal": true,
+        "refusal_reason": "Generation request — system retrieves, does not compose new poetry",
+        "notes": "Guardrail (b) should fire: no verbatim verse in approved passage set could be cited"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 135.84529201034456
+    },
+    {
+      "fixture": {
+        "id": "ooc15",
+        "query_ar": "ما هي قصائد الشاعر الوهراني من الجزائر؟",
+        "query_en": "What are the poems of the Algerian poet Al-Wahrani?",
+        "expected_refusal": true,
+        "refusal_reason": "Maghrebi poet — outside Khaleeji corpus",
+        "notes": "Wrong region"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 131.08479097718373
+    },
+    {
+      "fixture": {
+        "id": "ooc16",
+        "query_ar": "أعطني مثالاً على الشعر الفارسي الكلاسيكي",
+        "query_en": "Give me an example of classical Persian poetry",
+        "expected_refusal": true,
+        "refusal_reason": "Persian poetry — different language and tradition",
+        "notes": "Wrong language"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 133.94562498433515
+    },
+    {
+      "fixture": {
+        "id": "ooc17",
+        "query_ar": "ما هي أشعار عمر الخيام في رباعياته؟",
+        "query_en": "What are Omar Khayyam's poems in his Rubaiyat?",
+        "expected_refusal": true,
+        "refusal_reason": "Persian classical poet — not in Khaleeji Nabati corpus",
+        "notes": "Famous but outside scope"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 132.01133301481605
+    },
+    {
+      "fixture": {
+        "id": "ooc18",
+        "query_ar": "الشاعر الذي ولد عام 1950 في قطر وكتب عن الخليج",
+        "query_en": "The poet born in 1950 in Qatar who wrote about the Gulf",
+        "expected_refusal": true,
+        "refusal_reason": "Contemporary poet not indexed in Phase-4 registry",
+        "notes": "Fabricated contemporary reference — should trigger scoped refusal"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 133.632667013444
+    },
+    {
+      "fixture": {
+        "id": "ooc19",
+        "query_ar": "ما هي أشهر روايات نجيب محفوظ؟",
+        "query_en": "What are Naguib Mahfouz's most famous novels?",
+        "expected_refusal": true,
+        "refusal_reason": "Egyptian novelist — wrong genre (prose) and wrong region",
+        "notes": "Nobel laureate but not Nabati poetry"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 134.47720801923424
+    },
+    {
+      "fixture": {
+        "id": "ooc20",
+        "query_ar": "اشرح لي ملحمة جلجامش",
+        "query_en": "Explain the Epic of Gilgamesh to me",
+        "expected_refusal": true,
+        "refusal_reason": "Ancient Mesopotamian epic — outside Arabic Nabati corpus entirely",
+        "notes": "Wrong civilization, language, and era"
+      },
+      "is_refusal": true,
+      "elapsed_ms": 133.8440419640392
+    }
+  ]
+}

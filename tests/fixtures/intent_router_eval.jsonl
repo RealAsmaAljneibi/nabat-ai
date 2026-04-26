@@ -1,0 +1,51 @@
+{"query": "how can you help me?", "track": "capabilities", "subintent": null}
+{"query": "what can you search for?", "track": "capabilities", "subintent": null}
+{"query": "what are your features?", "track": "capabilities", "subintent": null}
+{"query": "tell me what this system does", "track": "capabilities", "subintent": null}
+{"query": "what topics does this cover?", "track": "capabilities", "subintent": null}
+{"query": "ماذا تستطيع أن تفعل؟", "track": "capabilities", "subintent": null}
+{"query": "كيف يمكنك مساعدتي؟", "track": "capabilities", "subintent": null}
+{"query": "ما هي إمكانياتك؟", "track": "capabilities", "subintent": null}
+{"query": "show me what you can do", "track": "capabilities", "subintent": null}
+{"query": "what kind of questions can I ask you?", "track": "capabilities", "subintent": null}
+{"query": "how many poems are in the corpus?", "track": "registry_lookup", "subintent": "count_poems"}
+{"query": "how many poets do you have?", "track": "registry_lookup", "subintent": "count_poets"}
+{"query": "how many manuscripts are in the collection?", "track": "registry_lookup", "subintent": "count_manuscripts"}
+{"query": "what is the total number of verses?", "track": "registry_lookup", "subintent": "count_poems"}
+{"query": "كم عدد القصائد في المجموعة؟", "track": "registry_lookup", "subintent": "count_poems"}
+{"query": "كم عدد الشعراء؟", "track": "registry_lookup", "subintent": "count_poets"}
+{"query": "كم عدد المخطوطات؟", "track": "registry_lookup", "subintent": "count_manuscripts"}
+{"query": "what century are these manuscripts from?", "track": "registry_lookup", "subintent": "age"}
+{"query": "how old are the manuscripts?", "track": "registry_lookup", "subintent": "age"}
+{"query": "what time period does the collection cover?", "track": "registry_lookup", "subintent": "age"}
+{"query": "where are the manuscripts from?", "track": "registry_lookup", "subintent": "provenance"}
+{"query": "which regions are represented in the collection?", "track": "registry_lookup", "subintent": "provenance"}
+{"query": "who collected these manuscripts?", "track": "registry_lookup", "subintent": "provenance"}
+{"query": "من جمع هذه المخطوطات؟", "track": "registry_lookup", "subintent": "provenance"}
+{"query": "من أين تأتي هذه المخطوطات؟", "track": "registry_lookup", "subintent": "provenance"}
+{"query": "what was your CRAG verdict on the last query?", "track": "instructor_debug", "subintent": "explain_crag_verdict"}
+{"query": "explain how RRF works in your pipeline", "track": "instructor_debug", "subintent": "explain_rrf"}
+{"query": "show me the debug info for the last turn", "track": "instructor_debug", "subintent": "debug_snapshot"}
+{"query": "what self-query filters did you extract?", "track": "instructor_debug", "subintent": "explain_self_query_schema"}
+{"query": "explain your fallback mechanism", "track": "instructor_debug", "subintent": "explain_fallback"}
+{"query": "how does triple hybrid retrieval work?", "track": "instructor_debug", "subintent": "explain_triple_hybrid"}
+{"query": "show the last turn pipeline introspection", "track": "instructor_debug", "subintent": "debug_snapshot"}
+{"query": "what refusal precision rules do you apply?", "track": "instructor_debug", "subintent": "explain_refusal_precision"}
+{"query": "explain the MSA to Khaleeji text swap", "track": "instructor_debug", "subintent": "explain_msa_to_khaleeji_swap"}
+{"query": "how does your self-query schema work?", "track": "instructor_debug", "subintent": "explain_self_query_schema"}
+{"query": "find poems about longing for the homeland", "track": "poetic_rag", "subintent": null}
+{"query": "show me verses about falconry", "track": "poetic_rag", "subintent": null}
+{"query": "what did Al-Hazani write about the desert?", "track": "poetic_rag", "subintent": null}
+{"query": "poems expressing grief and loss", "track": "poetic_rag", "subintent": null}
+{"query": "search for Nabati verses about camels", "track": "poetic_rag", "subintent": null}
+{"query": "أبيات عن الشوق والحنين", "track": "poetic_rag", "subintent": null}
+{"query": "قصائد عن الصيد بالصقر", "track": "poetic_rag", "subintent": null}
+{"query": "أشعار البادية والصحراء", "track": "poetic_rag", "subintent": null}
+{"query": "ابحث عن قصائد في الرثاء", "track": "poetic_rag", "subintent": null}
+{"query": "ما كتبه الشاعر في الغزل؟", "track": "poetic_rag", "subintent": null}
+{"query": "can you find the wasm tribal marks in this manuscript?", "track": "registry_lookup", "subintent": "unsupported_dim_wasm"}
+{"query": "find the marginalia annotations on page 5", "track": "registry_lookup", "subintent": "unsupported_dim_marginalia"}
+{"query": "show me ink bleed regions in the manuscript", "track": "registry_lookup", "subintent": "unsupported_dim_ink_bleed"}
+{"query": "where are the library stamp coordinates?", "track": "registry_lookup", "subintent": "unsupported_dim_library_stamp"}
+{"query": "identify secondary scribe handwriting", "track": "registry_lookup", "subintent": "unsupported_dim_secondary_scribe"}
+{"query": "وسوم العائلات في المخطوطات", "track": "registry_lookup", "subintent": "unsupported_dim_wasm"}

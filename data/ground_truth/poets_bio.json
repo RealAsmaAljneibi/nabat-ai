@@ -1,0 +1,212 @@
+[
+  {
+    "poet_name": "محمد العبدالله القاضي",
+    "normalised_name": "محمد العبدالله القاضي",
+    "bio_ar": "محمد بن عبدالله القاضي، أحد أعمدة الشعر النبطي الخليجي في القرن التاسع عشر. عُرف بغزارة إنتاجه في أغراض المدح والهجاء والوصف، وبلغت قصائده المحفوظة في مجاميع ابن يحيى أكثر من سبعين قطعة. ينتمي إلى تقليد الشعر الديواني الكلاسيكي الذي يوازن بين الصرامة اللغوية والمرونة اللهجية الخليجية.",
+    "bio_en": "Muhammad ibn Abdullah Al-Qadi was one of the pillars of Gulf Nabati poetry in the nineteenth century. Renowned for his prolific output spanning panegyric, satire, and descriptive verse, over seventy of his poems are preserved in the Ibn Yahya anthologies. He represents the classical diwan tradition that balances formal linguistic rigour with the fluency of Khaleeji vernacular.",
+    "sources": ["Ibn Yahya Manuscript (601-842)", "Sowayan — Nabati Poetry (The Oral Poetry of Arabia)"]
+  },
+  {
+    "poet_name": "محسن الهزاني",
+    "normalised_name": "محسن الهزاني",
+    "bio_ar": "محسن الهزاني، شاعر نجدي خليجي من القرن التاسع عشر، اشتُهر بقصائده الوجدانية وأشعار الفخر القبلي. تكشف نصوصه عن إلمام عميق بالبيئة الصحراوية وعالم البدو، وقد وُثِّقت أشعاره في مجاميع هزانية متعددة. يُعدّ من أكثر الشعراء توثيقاً في سجلات المرحلة الرابعة.",
+    "bio_en": "Muhsin Al-Hizani was a Najdi-Gulf poet of the nineteenth century celebrated for lyrical and tribal-pride verse. His poetry reveals intimate knowledge of the desert environment and Bedouin life, and has been preserved across multiple Hizani family anthologies. He is among the most frequently documented poets in the Phase-4 TOC registry.",
+    "sources": ["Ibn Yahya Manuscript (601-842)", "Al-Hassawi Manuscript"]
+  },
+  {
+    "poet_name": "محمد بن لعبون",
+    "normalised_name": "محمد بن لعبون",
+    "bio_ar": "محمد بن لعبون (1790–1831م تقريباً)، من أشهر شعراء الخليج العربي، ولد في منطقة نجد وارتبط بإمارة الكويت. اشتُهر بقصائد الغزل الرقيق والحكمة والمدح، وتُعدّ قصيدته \"الدواعي\" من أشهر الموروث الشعري النبطي. تُوجد له رواية شفهية واسعة في مجالس الخليج حتى اليوم.",
+    "bio_en": "Muhammad ibn La'bun (c. 1790–1831) is one of the most celebrated Gulf Arabic poets, born in Najd and associated with the Kuwaiti court. Renowned for delicate love poetry, wisdom verse, and panegyrics, his poem Al-Dawagi ranks among the most cherished pieces in the Nabati canon. His work persists in oral transmission across Gulf majalis to this day.",
+    "sources": ["Ibn Yahya Manuscript (001-200)", "Sowayan — Nabati Poetry (The Oral Poetry of Arabia)"]
+  },
+  {
+    "poet_name": "حمود العبيد",
+    "normalised_name": "حمود العبيد",
+    "bio_ar": "حمود العبيد، شاعر نبطي خليجي بارز من القرن التاسع عشر، اشتُهر بأشعار الفروسية والحرب والكرم. تتسم قصائده بالجزالة اللغوية والصور البلاغية المستمدة من بيئة البادية، وتنتشر رواياتها في مجموعات المخطوطات الخليجية على نطاق واسع.",
+    "bio_en": "Hammoud Al-Ubaid was a prominent Gulf Nabati poet of the nineteenth century celebrated for his verse on chivalry, warfare, and hospitality. His poetry is characterised by robust diction and rhetorical imagery drawn from the desert environment, and his works are widely attested across Khaleeji manuscript collections.",
+    "sources": ["Ibn Yahya Manuscript (601-842)", "Al-Shuraiti Manuscript"]
+  },
+  {
+    "poet_name": "عبدالله بن سبيل",
+    "normalised_name": "عبدالله بن سبيل",
+    "bio_ar": "عبدالله بن سبيل، شاعر سعودي من القرن التاسع عشر، اشتُهر بشعر الحكمة والأمثال والرثاء. تتميز قصائده بالعمق الفكري والإيجاز التعبيري، مما جعلها تنتقل بسهولة في التداول الشفهي. وُثِّق ديوانه في عدة مجاميع نجدية.",
+    "bio_en": "Abdullah ibn Subail was a Saudi poet of the nineteenth century renowned for wisdom poetry, aphorism, and elegies. His verse is distinguished by intellectual depth and expressive concision, qualities that aided its wide oral transmission. His collected works are documented in several Najdi manuscript anthologies.",
+    "sources": ["Ibn Yahya Manuscript (401-600)", "Al-Rubayi Manuscript"]
+  },
+  {
+    "poet_name": "عبيد بن رشيد",
+    "normalised_name": "عبيد بن رشيد",
+    "bio_ar": "عبيد بن رشيد، من شعراء المنطقة الوسطى في الجزيرة العربية. اشتُهر بأشعار المديح السياسي وقصائد الفخر التي ترتبط ببيت آل رشيد. تكشف أشعاره عن صلات متينة بمجالس الأمراء والقيادات القبلية في القرن التاسع عشر.",
+    "bio_en": "Ubaid ibn Rashid was a poet from central Arabia noted for political panegyric and pride poetry associated with the House of Rashid. His verse reveals close ties to the court of amirs and tribal leadership during the nineteenth century.",
+    "sources": ["Ibn Yahya Manuscript (201-400)", "Al-Hassawi Manuscript"]
+  },
+  {
+    "poet_name": "نمر بن عدوان",
+    "normalised_name": "نمر بن عدوان",
+    "bio_ar": "نمر بن عدوان (1780–1823م تقريباً)، شاعر أردني نبطي يُعدّ من أعظم شعراء الغزل في التراث العربي الشفهي. قصيدته الشهيرة في رثاء زوجته \"وضحى\" من أرق ما أُنتج في الشعر النبطي. تُشير المراجع إلى أن موروثه انتشر في بلاد الشام والجزيرة العربية على حد سواء.",
+    "bio_en": "Nimr ibn Adwan (c. 1780–1823) was a Jordanian Nabati poet considered one of the greatest love poets in the Arabic oral tradition. His celebrated elegy for his wife Wadha is among the most tender pieces in the Nabati canon. His legacy spread across Greater Syria and the Arabian Peninsula alike.",
+    "sources": ["Al-Assaf Manuscript", "Sowayan — Nabati Poetry (The Oral Poetry of Arabia)"]
+  },
+  {
+    "poet_name": "محمد العوني",
+    "normalised_name": "محمد العوني",
+    "bio_ar": "محمد العوني، شاعر نبطي يُنسب إلى منطقة نجد والخليج، اشتُهر بأشعار الغزل والرومانسية البدوية. وُثِّقت له قصائد عديدة في ديوان فهد المرك وما يتصل به من مجاميع، مما يشهد على انتشاره الواسع في التقليد الشفهي.",
+    "bio_en": "Muhammad Al-Awni was a Nabati poet associated with Najd and the Gulf, celebrated for love poetry and Bedouin romantic verse. Numerous poems attributed to him are documented in the Fahad Al-Mark Diwan and related anthologies, attesting to his wide currency in the oral tradition.",
+    "sources": ["Fahad Al-Mark / Muhammad Al-Awni (Part 1)", "Fahad Al-Mark / Muhammad Al-Awni (Part 2)"]
+  },
+  {
+    "poet_name": "عبيد الرشيد",
+    "normalised_name": "عبيد الرشيد",
+    "bio_ar": "عبيد الرشيد، شاعر من منطقة نجد، أسهم في إثراء الشعر النبطي بقصائد المدح والحكمة. يظهر اسمه بصيغ متعددة في الفهارس (عبيد بن رشيد / عبيد الرشيد)، مما يدل على تعدد الرواة. تنتشر قصائده في مجاميع القرن التاسع عشر.",
+    "bio_en": "Ubaid Al-Rashid was a Najdi poet who enriched the Nabati tradition with panegyric and wisdom verse. His name appears in variant forms across the manuscript indices (Ubaid ibn Rashid / Ubaid Al-Rashid), reflecting multiple lines of oral transmission. His poems circulate widely in nineteenth-century anthologies.",
+    "sources": ["Ibn Yahya Manuscript (401-600)", "Ibn Yahya Manuscript (601-842)"]
+  },
+  {
+    "poet_name": "عبدالله الفرج",
+    "normalised_name": "عبدالله الفرج",
+    "bio_ar": "عبدالله الفرج، شاعر نبطي من القرن التاسع عشر، اشتُهر بأشعار الوجد والشوق وعذاب الفراق. تنتشر قصائده في طائفة واسعة من المخطوطات الخليجية، وتُعدّ من بين الأكثر رواية في التقليد الشفهي للمنطقة.",
+    "bio_en": "Abdullah Al-Faraj was a Nabati poet of the nineteenth century celebrated for verse of longing, heartache, and the pain of separation. His poems circulate across a wide range of Khaleeji manuscripts and rank among the most transmitted pieces in the region's oral tradition.",
+    "sources": ["Al-Daoud Manuscript", "Ibn Yahya Manuscript (001-200)"]
+  },
+  {
+    "poet_name": "قاسم بن ثاني",
+    "normalised_name": "قاسم بن ثاني",
+    "bio_ar": "قاسم بن ثاني، شاعر قطري من القرن التاسع عشر، ينتمي إلى أسرة آل ثاني الحاكمة في قطر. ترتبط قصائده ارتباطاً وثيقاً بتاريخ الخليج السياسي وصراعات النفوذ في عصره، وتُعدّ من أندر الوثائق الشعرية على البيئة السياسية الخليجية.",
+    "bio_en": "Qasim ibn Thani was a Qatari poet of the nineteenth century belonging to the ruling Al Thani family. His verse is closely linked to Gulf political history and the power struggles of his era, making his poetry among the rarest documentary sources on the Khaleeji political environment.",
+    "sources": ["Al-Shuraiti Manuscript", "Ibn Yahya Manuscript (601-842)"]
+  },
+  {
+    "poet_name": "حمد الابراهيم بن عمار",
+    "normalised_name": "حمد الابراهيم بن عمار",
+    "bio_ar": "حمد الإبراهيم بن عمار، شاعر نجدي خليجي، اشتُهر بالمدح والرثاء وأشعار الشوق. وُثِّق له عدد من القصائد في المجاميع الخطية الخليجية، ويُمثّل نموذجاً للشاعر البدوي الذي يوازن بين الالتزام القبلي والتعبير الوجداني.",
+    "bio_en": "Hamad Al-Ibrahim ibn Ammar was a Najdi-Gulf poet celebrated for panegyrics, elegies, and poems of longing. A number of his pieces are preserved in Khaleeji manuscript anthologies; he exemplifies the Bedouin poet who balances tribal allegiance with lyrical emotional expression.",
+    "sources": ["Ibn Yahya Manuscript (201-400)", "Al-Rubayi Manuscript"]
+  },
+  {
+    "poet_name": "عجران بن شرفي",
+    "normalised_name": "عجران بن شرفي",
+    "bio_ar": "عجران بن شرفي، شاعر نبطي من المنطقة الوسطى بالجزيرة العربية. يتميز شعره بالصور الحية للحياة البدوية وإبل الصحراء والبيئة الطبيعية. تُعدّ قصائده وثائق أدبية مهمة للحياة الاجتماعية في القرن التاسع عشر.",
+    "bio_en": "Ajran ibn Sharfi was a Nabati poet from central Arabia whose verse is distinguished by vivid imagery of Bedouin life, desert camels, and the natural environment. His poems serve as important literary documents of social life in the nineteenth century.",
+    "sources": ["Al-Hassawi Manuscript", "Ibn Yahya Manuscript (001-200)"]
+  },
+  {
+    "poet_name": "فجحان الفراوي",
+    "normalised_name": "فجحان الفراوي",
+    "bio_ar": "فجحان الفراوي، شاعر نبطي خليجي، يُعدّ من أصحاب الأسلوب المتفرد في الوصف والتشبيه. تتميز قصائده بالجرأة التعبيرية والصراحة في نقد الأوضاع الاجتماعية، وقد ظلت حاضرة في الذاكرة الشفهية للخليج لعقود.",
+    "bio_en": "Fajhan Al-Farrawi was a Gulf Nabati poet noted for a distinctive style in descriptive and simile verse. His poems are characterised by expressive boldness and candid social commentary; they have remained alive in the Gulf oral memory for generations.",
+    "sources": ["Al-Suwaygh Manuscript", "Al-Daoud Manuscript"]
+  },
+  {
+    "poet_name": "عبدالله بن ربيعه",
+    "normalised_name": "عبدالله بن ربيعه",
+    "bio_ar": "عبدالله بن ربيعة، شاعر نبطي بارز من منطقة نجد، نظم في أغراض الغزل والفخر والرثاء. تكشف قصائده عن حدة في التصوير وعمق في التجربة الإنسانية، وقد انتقلت بالرواية الشفهية إلى مجاميع عدة.",
+    "bio_en": "Abdullah ibn Rabi'ah was a prominent Nabati poet from Najd who composed in the genres of love, pride, and elegy. His verse reveals sharp imagery and depth of human experience, and has passed through oral transmission into multiple manuscript anthologies.",
+    "sources": ["Ibn Yahya Manuscript (401-600)", "Al-Rubayi Manuscript"]
+  },
+  {
+    "poet_name": "زيد السلامه الخوير",
+    "normalised_name": "زيد السلامه الخوير",
+    "bio_ar": "زيد السلامة الخوير، شاعر نبطي نجدي عُرف بأشعار الحكمة والموعظة. يُمثّل تيار الشعر الديداكتيكي في الموروث النبطي، إذ حرص على ترسيخ القيم القبلية والأخلاقية في قصائده.",
+    "bio_en": "Zayd Al-Salama Al-Khuwayr was a Najdi Nabati poet celebrated for wisdom and moral instruction verse. He represents the didactic current within the Nabati tradition, consistently reinforcing tribal and ethical values through his poetry.",
+    "sources": ["Ibn Yahya Manuscript (001-200)", "Al-Dhukair Manuscript"]
+  },
+  {
+    "poet_name": "عطا الله بن خزيم",
+    "normalised_name": "عطا الله بن خزيم",
+    "bio_ar": "عطا الله بن خزيم، شاعر نبطي من منطقة القصيم، يُعدّ من أصحاب أشعار المدح السياسي والديني. ترتبط قصائده بأحداث تاريخية موثّقة، مما يجعلها مصدراً مهماً للمؤرخين المهتمين بالقرن التاسع عشر.",
+    "bio_en": "Ata Allah ibn Khuzaym was a Nabati poet from the Qasim region associated with political and religious panegyric. His verse is linked to documented historical events, making it an important source for historians of the nineteenth-century Arabian Peninsula.",
+    "sources": ["Al-Assaf Manuscript", "Ibn Yahya Manuscript (201-400)"]
+  },
+  {
+    "poet_name": "حميدان الشويعر",
+    "normalised_name": "حميدان الشويعر",
+    "bio_ar": "حميدان الشويعر (القرن الثامن عشر)، من أبرز شعراء الشعر النبطي الكلاسيكي، اشتُهر بالهجاء الحاد والنقد الاجتماعي الجريء. يُعدّ من أكثر الشعراء تأثيراً في تشكيل أسلوب الهجاء النبطي. تُدرَس قصائده في المناهج الأكاديمية لدراسات الشعر العربي الشفهي.",
+    "bio_en": "Humaidan Al-Shuwayr (eighteenth century) was one of the foremost classical Nabati poets, renowned for sharp satire and bold social criticism. He is among the most influential figures in shaping the tradition of Nabati satirical verse and his poems are studied in academic curricula on oral Arabic poetry.",
+    "sources": ["Sowayan — Nabati Poetry (The Oral Poetry of Arabia)", "Ibn Yahya Manuscript (001-200)"]
+  },
+  {
+    "poet_name": "مشعان بن هذال",
+    "normalised_name": "مشعان بن هذال",
+    "bio_ar": "مشعان بن هذال، شاعر نبطي من قبيلة عنزة، اشتُهر بأشعار الحرب والفروسية والدفاع عن الشرف القبلي. يُجسّد في شعره النموذج الأمثل للشاعر المحارب في التقليد البدوي، وتحتفظ روايات قبيلته بأكثر قصائده تفصيلاً.",
+    "bio_en": "Mash'an ibn Hizal was a Nabati poet of the Anazah tribe celebrated for verse on warfare, chivalry, and tribal honour. He embodies in his poetry the ideal of the warrior-poet in the Bedouin tradition, and the most detailed accounts of his verse are preserved in tribal memory.",
+    "sources": ["Al-Suwaygh Manuscript", "Sowayan — Nabati Poetry (The Oral Poetry of Arabia)"]
+  },
+  {
+    "poet_name": "حسن التبيناوي",
+    "normalised_name": "حسن التبيناوي",
+    "bio_ar": "حسن التبيناوي، شاعر نبطي من المنطقة الشرقية، اشتُهر بمرثياته الحزينة وأشعار الشوق والاغتراب. تتسم قصائده بالإيقاع المؤثر والصور الدرامية التي تستحضر روح الصحراء وعزلتها.",
+    "bio_en": "Hassan Al-Tabiynawi was a Nabati poet from the Eastern Province noted for mournful elegies and verse of yearning and estrangement. His poems are distinguished by affecting rhythm and dramatic imagery evoking the spirit and solitude of the desert.",
+    "sources": ["Al-Daoud Manuscript", "Ibn Yahya Manuscript (601-842)"]
+  },
+  {
+    "poet_name": "ناصر الهزاني",
+    "normalised_name": "ناصر الهزاني",
+    "bio_ar": "ناصر الهزاني، شاعر نبطي نجدي من عائلة الهزاني الشعرية، اشتُهر بأشعار المدح والفخر. تُعدّ قصائده امتداداً للتقليد الهزاني العائلي الذي أثرى المنظومة الشعرية النبطية بأجيال متتالية من الشعراء.",
+    "bio_en": "Nasir Al-Hizani was a Najdi Nabati poet from the Hizani poetic family, celebrated for panegyric and pride verse. His works continue the Hizani family tradition that enriched the Nabati canon across successive generations of poets.",
+    "sources": ["Ibn Yahya Manuscript (601-842)", "Al-Hassawi Manuscript"]
+  },
+  {
+    "poet_name": "ناصر بن حمد الهزاني",
+    "normalised_name": "ناصر بن حمد الهزاني",
+    "bio_ar": "ناصر بن حمد الهزاني، أحد أكثر الشعراء توثيقاً في سجل المرحلة الرابعة. تمتاز قصائده بالسلاسة الموسيقية والاتساق الموضوعي، وتغطي أغراض الغزل والمدح والرثاء. يُعدّ ممثلاً بارزاً للتقليد الشعري الكلاسيكي في القرن التاسع عشر.",
+    "bio_en": "Nasir ibn Hamad Al-Hizani is among the most frequently documented poets in the Phase-4 registry. His verse is distinguished by musical fluency and thematic consistency, spanning love, panegyric, and elegy. He is a prominent representative of the classical poetic tradition of the nineteenth century.",
+    "sources": ["Ibn Yahya Manuscript (601-842)", "Al-Shuraiti Manuscript"]
+  },
+  {
+    "poet_name": "مبيريك التبيناوي",
+    "normalised_name": "مبيريك التبيناوي",
+    "bio_ar": "مبيريك التبيناوي، شاعر نبطي من المنطقة الشرقية، يُعدّ من أصحاب أشعار الغزل والحنين. اشتُهر بمقدراته الموسيقية وبراعته في استخدام الأوزان الخليجية التقليدية. تنتقل قصائده شفهياً في مجالس المنطقة الشرقية.",
+    "bio_en": "Mubarrayk Al-Tabiynawi was a Nabati poet from the Eastern Province celebrated for love and nostalgic verse. Renowned for his musicality and mastery of traditional Khaleeji metres, his poems circulate orally in the Eastern Province majalis.",
+    "sources": ["Al-Daoud Manuscript", "Al-Hassawi Manuscript"]
+  },
+  {
+    "poet_name": "سالم الشليخي",
+    "normalised_name": "سالم الشليخي",
+    "bio_ar": "سالم الشليخي، شاعر نبطي من منطقة الخليج، اشتُهر بالأشعار الوصفية والنسيب. يتميز أسلوبه بالتوسع في الصور البيانية وعمق الوصف الطبيعي، مما يجعله من أصحاب المدرسة الوصفية في الشعر النبطي.",
+    "bio_en": "Salim Al-Shulaikhi was a Gulf Nabati poet noted for descriptive and amatory verse. His style is distinguished by expansive figurative language and depth of natural description, placing him firmly within the descriptive school of Nabati poetry.",
+    "sources": ["Al-Suwaygh Manuscript", "Ibn Yahya Manuscript (001-200)"]
+  },
+  {
+    "poet_name": "رشيد العلي",
+    "normalised_name": "رشيد العلي",
+    "bio_ar": "رشيد العلي، شاعر نبطي خليجي من القرن التاسع عشر، نظم في أغراض الفخر القبلي والحكمة. تُشير رواياته المتعددة في المخطوطات إلى انتشاره الواسع في التقليد الشعري الخليجي.",
+    "bio_en": "Rashid Al-Ali was a Gulf Nabati poet of the nineteenth century who composed in the genres of tribal pride and wisdom. The multiple attestations of his verse across manuscripts indicate wide currency in the Khaleeji poetic tradition.",
+    "sources": ["Al-Rubayi Manuscript", "Ibn Yahya Manuscript (401-600)"]
+  },
+  {
+    "poet_name": "خلف ابو زويد",
+    "normalised_name": "خلف ابو زويد",
+    "bio_ar": "خلف أبو زويد، شاعر نبطي من القرن التاسع عشر، يُعدّ من أصحاب المدرسة الوجدانية في الشعر الخليجي. تتسم قصائده بالبساطة التعبيرية والعمق العاطفي، وقد حافظت عليها الرواية الشفهية في الخليج.",
+    "bio_en": "Khalaf Abu Zuwayd was a nineteenth-century Nabati poet associated with the lyrical school of Khaleeji poetry. His verse is characterised by expressive simplicity and emotional depth, qualities that ensured its preservation in Gulf oral tradition.",
+    "sources": ["Al-Shuraiti Manuscript", "Al-Daoud Manuscript"]
+  },
+  {
+    "poet_name": "صالح السكيني",
+    "normalised_name": "صالح السكيني",
+    "bio_ar": "صالح السكيني (ويُروى أيضاً صالح العبدالله السكيني)، شاعر نبطي نجدي، نظم في أغراض المدح والتأمل الفلسفي. يتميز ببُعد نظري نسبي في شعره، إذ تتجاوز قصائده أحياناً الأغراض التقليدية نحو تأمل الوجود الإنساني.",
+    "bio_en": "Salih Al-Sukayni (also attested as Salih Abdullah Al-Sukayni) was a Najdi Nabati poet who composed in panegyric and philosophical reflection. A degree of intellectual depth distinguishes his verse, which at times transcends conventional genres toward meditation on human existence.",
+    "sources": ["Ibn Yahya Manuscript (201-400)", "Al-Assaf Manuscript"]
+  },
+  {
+    "poet_name": "الأمير حمد السديري",
+    "normalised_name": "الامير حمد السديري",
+    "bio_ar": "الأمير حمد السديري، شاعر ورجل دولة من عائلة السديري النجدية، نظم في أغراض المدح السياسي والسياسة القبلية. تكتسب قصائده قيمة تاريخية إضافية لارتباطها بأحداث الحكم في الجزيرة العربية في القرن التاسع عشر.",
+    "bio_en": "Prince Hamad Al-Sudayri was a poet and statesman from the Najdi Sudayri family who composed political panegyric and tribal-policy verse. His poems carry additional historical value for their connection to governance events on the Arabian Peninsula in the nineteenth century.",
+    "sources": ["Ibn Yahya Manuscript (401-600)", "Sowayan — Nabati Poetry (The Oral Poetry of Arabia)"]
+  },
+  {
+    "poet_name": "دغيم الظلماوي",
+    "normalised_name": "دغيم الظلماوي",
+    "bio_ar": "دغيم الظلماوي، شاعر نبطي نجدي، اشتُهر بأشعار الطبيعة والوصف والحكمة الشعبية. تتميز قصائده بالقدرة على ربط المشهد الطبيعي بالمشاعر الإنسانية، وتُعدّ من نماذج الشعر الوجداني الوصفي في الموروث النبطي.",
+    "bio_en": "Dughaym Al-Thulmawi was a Najdi Nabati poet celebrated for nature poetry, descriptive verse, and folk wisdom. His poems are distinguished by their power to link natural landscapes to human emotion, representing a fine example of lyrical-descriptive poetry in the Nabati heritage.",
+    "sources": ["Ibn Yahya Manuscript (601-842)", "Al-Dhukair Manuscript"]
+  },
+  {
+    "poet_name": "عثمان بن صالح",
+    "normalised_name": "عثمان بن صالح",
+    "bio_ar": "عثمان بن صالح، شاعر نبطي من القرن التاسع عشر، نظم في أغراض الفخر والحكمة والتأمل. تنتشر قصائده في مجاميع متعددة مما يشير إلى حضوره الواسع في الذاكرة الشعرية الجمعية للجزيرة العربية.",
+    "bio_en": "Uthman ibn Salih was a nineteenth-century Nabati poet who composed in the genres of pride, wisdom, and contemplation. The broad distribution of his verse across multiple anthologies points to his wide presence in the collective poetic memory of the Arabian Peninsula.",
+    "sources": ["Ibn Yahya Manuscript (001-200)", "Al-Najm Al-Lami Manuscript"]
+  }
+]

@@ -1,0 +1,122 @@
+[
+  {
+    "filename_stem": "manuscript01",
+    "short_key": "huber_1",
+    "notes": "Houbair (Huber) collection Part 1 — ms01 maps to Huber 1"
+  },
+  {
+    "filename_stem": "manuscript02",
+    "short_key": "huber_2",
+    "notes": "Houbair (Huber) collection Part 2 — ms02 maps to Huber 2"
+  },
+  {
+    "filename_stem": "manuscript03",
+    "short_key": "al_hassawi",
+    "notes": "Al-Hassawi manuscript"
+  },
+  {
+    "filename_stem": "manuscript04",
+    "short_key": "ubaid_al_rashid",
+    "notes": "Ubaid Al-Rashid manuscript"
+  },
+  {
+    "filename_stem": "manuscript05",
+    "short_key": "al_suwaygh",
+    "notes": "Al-Suwaygh manuscript"
+  },
+  {
+    "filename_stem": "manuscript06",
+    "short_key": "al_daoud",
+    "notes": "Al-Daoud manuscript"
+  },
+  {
+    "filename_stem": "manuscript07",
+    "short_key": "al_shuraiti",
+    "notes": "Al-Shuraiti manuscript — Phase 1 primary source"
+  },
+  {
+    "filename_stem": "manuscript08",
+    "short_key": "sulayman_al_dakhil",
+    "notes": "Sulayman Al-Dakhil manuscript"
+  },
+  {
+    "filename_stem": "manuscript09",
+    "short_key": "al_dhukair",
+    "notes": "Al-Dhukair manuscript"
+  },
+  {
+    "filename_stem": "manuscript10",
+    "short_key": "al_rubayi",
+    "notes": "Al-Rubai'i manuscript"
+  },
+  {
+    "filename_stem": "manuscript11",
+    "short_key": "ibn_yahya_001_200",
+    "notes": "Ibn Yahya volume 1 (pages 001-200)"
+  },
+  {
+    "filename_stem": "manuscript12",
+    "short_key": "ibn_yahya_201_400",
+    "notes": "Ibn Yahya volume 2 (pages 201-400)"
+  },
+  {
+    "filename_stem": "manuscript13",
+    "short_key": "ibn_yahya_401_600",
+    "notes": "Ibn Yahya volume 3 (pages 401-600)"
+  },
+  {
+    "filename_stem": "manuscript14",
+    "short_key": "ibn_yahya_601_842",
+    "notes": "Ibn Yahya volume 4 (pages 601-842) — Phase 1 secondary"
+  },
+  {
+    "filename_stem": "manuscript15",
+    "short_key": "al_assaf",
+    "notes": "Al-Assaf manuscript — Phase 1 tertiary"
+  },
+  {
+    "filename_stem": "manuscript16",
+    "short_key": "al_najm_al_lami",
+    "notes": "Al-Najm Al-Lami' (The Shining Star)"
+  },
+  {
+    "filename_stem": "manuscript17",
+    "short_key": "fahad_al_mark_1",
+    "notes": "Fahad Al-Mark / Muhammad Al-Awni Part 1"
+  },
+  {
+    "filename_stem": "manuscript18",
+    "short_key": "fahad_al_mark_2",
+    "notes": "Fahad Al-Mark / Muhammad Al-Awni Part 2"
+  },
+  {
+    "filename_stem": "manuscript19",
+    "short_key": "albert_socin_1",
+    "notes": "Albert Sowssan Diwan Part 1"
+  },
+  {
+    "filename_stem": "manuscript20",
+    "short_key": "albert_socin_2",
+    "notes": "Albert Sowssan Diwan Part 2"
+  },
+  {
+    "filename_stem": "manuscript21",
+    "short_key": "albert_socin_3",
+    "notes": "Albert Sowssan Diwan Part 3"
+  },
+  {
+    "filename_stem": "manuscript22",
+    "short_key": "nabati_poetry_1",
+    "notes": "Nabati Poetry Manuscript (1)"
+  },
+  {
+    "filename_stem": "manuscript23",
+    "short_key": "nabati_poetry_2",
+    "notes": "Nabati Poetry Manuscript (2)"
+  },
+  {
+    "filename_stem": "601-782",
+    "short_key": "ibn_yahya_601_842",
+    "notes": "Phase-4 TOC volume identifier for Ibn Yahya pages 601-782 (maps to ibn_yahya_601_842)"
+  }
+]

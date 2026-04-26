@@ -1,0 +1,112 @@
+# infra/escriptorium/docker-compose.yml
+# =====================================
+# Quick start (first time): bash setup.sh
+# Subsequent starts:        docker compose up -d
+#
+# Apple Silicon note:
+#   - postgres, redis, nginx: use native ARM64 images (no platform pin needed)
+#   - app, celery: built from escriptorium source (amd64-only base image),
+#     so platform: linux/amd64 is required for Rosetta 2 emulation
+
+x-escriptorium-build: &escriptorium-build
+  build:
+    context: ./escriptorium-src
+    dockerfile: Dockerfile
+  pull_policy: build
+  platform: linux/amd64
+  image: nabat-ai/escriptorium:local
+
+services:
+
+  db:
+    # Keep postgres:13 — data volume was initialized with v13
+    image: postgres:13-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB:-escriptorium}
+      POSTGRES_USER:     ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - ../../data/escriptorium/db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  app:
+    <<: *escriptorium-build
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SECRET_KEY:             ${SECRET_KEY:-change-me-in-production}
+      DEBUG:                  "False"
+      CSRF_TRUSTED_ORIGINS:   "http://localhost:8080"
+      POSTGRES_DB:            ${POSTGRES_DB:-escriptorium}
+      POSTGRES_USER:          ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD:      ${POSTGRES_PASSWORD:-postgres}
+      SQL_HOST:               db
+      SQL_PORT:               "5432"
+      REDIS_HOST:             redis
+      REDIS_PORT:             "6379"
+      DJANGO_SU_NAME:         admin
+      DJANGO_SU_EMAIL:        admin@nabat.ai
+      DJANGO_SU_PASSWORD:     nabatai2026
+      DJANGO_FROM_EMAIL:      noreply@nabat.ai
+      DJANGO_LANGUAGE_CODE:   ar
+      DJANGO_TIME_ZONE:       Asia/Dubai
+    volumes:
+      - ../../data/escriptorium/media:/usr/src/app/media
+      - ../../data/escriptorium/static:/usr/src/app/static
+    command: uwsgi --ini /usr/src/app/uwsgi.ini
+
+  celery:
+    <<: *escriptorium-build
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SECRET_KEY:             ${SECRET_KEY:-change-me-in-production}
+      POSTGRES_DB:            ${POSTGRES_DB:-escriptorium}
+      POSTGRES_USER:          ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD:      ${POSTGRES_PASSWORD:-postgres}
+      SQL_HOST:               db
+      SQL_PORT:               "5432"
+      REDIS_HOST:             redis
+      REDIS_PORT:             "6379"
+      DJANGO_SU_NAME:         admin
+      DJANGO_SU_EMAIL:        admin@nabat.ai
+      DJANGO_SU_PASSWORD:     nabatai2026
+    volumes:
+      - ../../data/escriptorium/media:/usr/src/app/media
+    command: celery -A escriptorium worker -l INFO -E -Ofair --prefetch-multiplier 1 -Q default,gpu -c 2 --max-tasks-per-child=10
+
+  nginx:
+    image: nginx:1.25-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "${ESCR_PORT:-8080}:80"
+    volumes:
+      - ../../data/escriptorium/media:/usr/src/app/media:ro
+      - ../../data/escriptorium/static:/usr/src/app/static:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
