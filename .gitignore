@@ -32,6 +32,7 @@ poetry_folder_survey.txt
 
 # IDE / AI assistant local config
 .claude/
+CLAUDE.md
 
 # Large manuscript source files (data already extracted to data/ground_truth/)
 manuscripts/

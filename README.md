@@ -2,7 +2,23 @@
 
 > **Course:** MAAI1704 – Generative AI  
 > **Student:** Asma Salem Mubarak Najem Aljneibi  
-> **Deliverable:** MAAI1704 Project — Runs without Docker, GPU, or paid APIs.
+> **Deliverable:** Graded MAAI1704 Project — Runs without Docker, GPU, or paid APIs.
+
+## Grading Rubric
+
+The assessment rubric is stored at **`doc/RUBRIC.md`** for easy reference during evaluation. Each criterion links directly to the evidence in this repo:
+
+| Criterion | Max | Where to find the evidence |
+|---|---|---|
+| Alignment with Proposal & Architecture | 10 | [`doc/TRACEABILITY.md`](doc/TRACEABILITY.md) · [`doc/IMPLEMENTATION_PLAN.md`](doc/IMPLEMENTATION_PLAN.md) · architecture §2.4/§2.5 mirrors `agent1_query_understanding/` + `agent2_retrieval_synthesis/` |
+| Agentic System Realization | 20 | [`src/fatat_al_arab/orchestrator.py`](src/fatat_al_arab/orchestrator.py) · [`agent1_query_understanding/graph.py`](src/fatat_al_arab/agent1_query_understanding/graph.py) · [`agent2_retrieval_synthesis/graph.py`](src/fatat_al_arab/agent2_retrieval_synthesis/graph.py) |
+| AI-Assisted Development Process | 15 | [`DEVELOPMENT_LOG.md`](DEVELOPMENT_LOG.md) — prompt iterations, debugging stories, code modifications |
+| Code Quality & Modularity | 10 | `src/` directory structure · every module docstring · `.env.example` |
+| System Integration | 15 | `data/qdrant/` (pre-built real index) · `app/streamlit_app.py` · `scripts/rebuild_index.py` |
+| Memory, Tools & RAG | 8 | `data/qdrant/` (long-term vector store) · `bilingual_analyzer.py` (conversation history) · `retrievers/` |
+| Evaluation & Reliability | 7 | `tests/` (15 files · 480+ test cases including edge cases in [`tests/test_edge_cases.py`](tests/test_edge_cases.py)) · `scripts/evaluate.py` |
+| Understanding & Ownership | 10 | [`doc/TRACEABILITY.md`](doc/TRACEABILITY.md) · [`DEVELOPMENT_LOG.md`](DEVELOPMENT_LOG.md) · inline `Why:` comments throughout |
+| Reflection on AI Usage | 5 | [`doc/AI_USAGE_REFLECTION.md`](doc/AI_USAGE_REFLECTION.md) |
 
 An AI system that digitises handwritten Khaleeji Nabati poetry manuscripts and exposes them through a bilingual (Arabic / English) Retrieval-Augmented Generation agent. The full Scholar interface runs in a single Streamlit tab — no GPU, no Docker, no paid-tier API required.
 
@@ -212,6 +228,20 @@ docker compose up -d
 Then set `ESCR_BASE_URL` and `ESCR_API_TOKEN` in your `.env`. See `infra/escriptorium/README.md` for full instructions.
 
 ---
+
+## Documentation
+
+| Document | Purpose |
+|---|---|
+| [`DEVELOPMENT_LOG.md`](DEVELOPMENT_LOG.md) | Iterative development process — prompt engineering, debugging, AI-assisted decisions |
+| [`doc/AI_USAGE_REFLECTION.md`](doc/AI_USAGE_REFLECTION.md) | What worked / failed with code generators, limitations, improvements |
+| [`doc/TRACEABILITY.md`](doc/TRACEABILITY.md) | Use-case → Architecture → Code mapping for all four personas |
+| [`doc/IMPLEMENTATION_PLAN.md`](doc/IMPLEMENTATION_PLAN.md) | Build plan v2 — all milestones M0–M11 |
+| [`doc/ARCHITECTURE_DIAGRAMS.md`](doc/ARCHITECTURE_DIAGRAMS.md) | Mermaid source for all pipeline diagrams |
+| [`doc/DATA_PIPELINE.md`](doc/DATA_PIPELINE.md) | ETL workflow — 4-phase corpus strategy |
+
+---
+
 
 ## Key Design Decisions
 
