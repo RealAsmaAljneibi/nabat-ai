@@ -147,12 +147,15 @@ def crag_grader_node(state: AgentState) -> AgentState:
     # Only grade resolvable passages — unresolvable ones are already flagged
     gradeable = [p for p in passages if p.get("citation_resolvable", True)]
 
+    from fatat_al_arab.state import trace_append
+
     if not gradeable:
         logger.warning("crag_grader_node: no resolvable passages to grade — verdict Incorrect.")
         return {
             **state,
             "crag_grades":  [],
             "crag_verdict": "Incorrect",
+            "agent_trace": trace_append(state, stage="7", icon="⚖️", label="CRAG Grader", summary="No gradeable passages → Incorrect — re-querying"),
         }
 
     grades, requery_strategy = _grade_passages(query_ar, gradeable)
@@ -163,9 +166,38 @@ def crag_grader_node(state: AgentState) -> AgentState:
         len(grades), verdict, requery_strategy[:80] if requery_strategy else "",
     )
 
+    from collections import Counter
+    grade_counts = Counter(g.get("label", "?") for g in grades)
+    grade_str = " · ".join(f"{cnt} {lbl}" for lbl, cnt in sorted(grade_counts.items()))
+
+    # Find the most critical grade's LLM-generated rationale to surface in the trace
+    problem_grade = next(
+        (g for g in grades if g.get("label") in ("Incorrect", "Ambiguous") and g.get("rationale")),
+        None,
+    )
+
+    if verdict in ("Incorrect", "Ambiguous") and problem_grade:
+        rationale = problem_grade["rationale"]
+        rationale_preview = rationale[:150] + "…" if len(rationale) > 150 else rationale
+        if requery_strategy:
+            strat_preview = requery_strategy[:100] + "…" if len(requery_strategy) > 100 else requery_strategy
+            trace_detail  = f'"{rationale_preview}"\n→ Searching instead for: {strat_preview}'
+            trace_summary = f"{grade_str} — re-querying"
+        else:
+            trace_detail  = f'"{rationale_preview}"'
+            trace_summary = f"{grade_str} → {verdict}"
+    elif requery_strategy:
+        strat_preview = requery_strategy[:120] + "…" if len(requery_strategy) > 120 else requery_strategy
+        trace_detail  = f"Searching instead for: {strat_preview}"
+        trace_summary = f"{grade_str} — re-querying"
+    else:
+        trace_detail  = ""
+        trace_summary = f"{grade_str} → {verdict}"
+
     return {
         **state,
         "crag_grades":           grades,
         "crag_verdict":          verdict,
         "crag_requery_strategy": requery_strategy,
+        "agent_trace": trace_append(state, stage="7", icon="⚖️", label="CRAG Grader", summary=trace_summary, detail=trace_detail),
     }

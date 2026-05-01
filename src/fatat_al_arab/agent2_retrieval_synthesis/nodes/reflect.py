@@ -141,12 +141,15 @@ def reflect_node(state: AgentState) -> AgentState:
       state["self_rag_retries"]   — incremented when verdict is "retry"
     """
     # Skip reflection on the refusal path — the refusal template doesn't need grading
+    from fatat_al_arab.state import trace_append
+
     if state.get("is_refusal"):
         return {
             **state,
             "self_rag_scores":  {"faithfulness": 1.0, "relevance": 1.0,
                                   "completeness": 1.0, "pass": True, "issues": []},
             "self_rag_verdict": "pass",
+            "agent_trace": trace_append(state, stage="9", icon="🪞", label="Self-RAG Reflection", summary="Skipped — refusal path"),
         }
 
     qc = state.get("query_context") or {}
@@ -177,9 +180,37 @@ def reflect_node(state: AgentState) -> AgentState:
         verdict, new_retry_count, SELF_RAG_MAX_RETRIES,
     )
 
+    f = scores.get("faithfulness", 0.0)
+    r = scores.get("relevance",    0.0)
+    c = scores.get("completeness", 0.0)
+    fix_full   = scores.get("fix_instructions") or ""
+    failed     = scores.get("failed_claims") or []
+    issues     = scores.get("issues") or []
+
+    scores_str = f"F:{f:.2f} R:{r:.2f} C:{c:.2f}"
+
+    if verdict == "retry":
+        trace_summary = f"Needs revision — retrying ({new_retry_count}/{SELF_RAG_MAX_RETRIES})"
+        if fix_full:
+            fix_preview  = fix_full[:220] + "…" if len(fix_full) > 220 else fix_full
+            trace_detail = f'"{fix_preview}"'
+            if failed:
+                claims_preview = "; ".join(f'"{c[:60]}"' for c in failed[:2])
+                trace_detail += f"\nUnsupported claims: {claims_preview}"
+        else:
+            trace_detail = scores_str
+    elif verdict == "flag":
+        first_issue = issues[0] if issues else fix_full[:100]
+        trace_summary = f"Proceeding with caution — {scores_str}"
+        trace_detail  = f'"{first_issue}"' if first_issue else ""
+    else:
+        trace_summary = f"Response verified — faithful and complete ({scores_str})"
+        trace_detail  = ""
+
     return {
         **state,
         "self_rag_scores":  scores,
         "self_rag_verdict": verdict,
         "self_rag_retries": new_retry_count,
+        "agent_trace": trace_append(state, stage="9", icon="🪞", label="Self-RAG Reflection", summary=trace_summary, detail=trace_detail),
     }

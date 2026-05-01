@@ -8,10 +8,11 @@ attempt to call a non-registered tool raise a ToolNotPermittedError at import
 time.
 
 Agent 1 tool registry (§2.9):
-  translate_query    — EN↔AR translation via translate.py
-  extract_filters    — typed filter extraction via self_query.py
-  hyde_passage       — hypothetical verse generation via hyde.py
-  expand_bilingual   — bilingual paraphrase expansion via bilingual_expand.py
+  translate_query         — EN↔AR translation via translate.py
+  extract_filters         — typed filter extraction via self_query.py
+  hyde_passage            — hypothetical verse generation via hyde.py
+  expand_bilingual        — bilingual paraphrase expansion via bilingual_expand.py
+  khaleeji_dialect_bridge — Khaleeji→MSA lexicon lookup (EXT-1)
 
 Why no retrieval tools here: §2.9 says Agent 1 must not perform retrieval.
 Retrieval tools (retrieve_triple, rrf_fuse, etc.) are only in agent2/tools.py.
@@ -44,6 +45,7 @@ from ..translate import translate_query                          # noqa: E402
 from .nodes.self_query import extract_filters                   # noqa: E402
 from .nodes.hyde import hyde_passage                            # noqa: E402
 from .nodes.bilingual_expand import expand_bilingual            # noqa: E402
+from al_nassikh.khaleeji_lexicon import khaleeji_dialect_bridge  # noqa: E402
 
 
 # ── Registry ──────────────────────────────────────────────────────────────────
@@ -52,10 +54,11 @@ from .nodes.bilingual_expand import expand_bilingual            # noqa: E402
 # one glance.
 
 AGENT1_TOOLS: dict[str, Callable] = {
-    "translate_query":  translate_query,
-    "extract_filters":  extract_filters,
-    "hyde_passage":     hyde_passage,
-    "expand_bilingual": expand_bilingual,
+    "translate_query":          translate_query,
+    "extract_filters":          extract_filters,
+    "hyde_passage":             hyde_passage,
+    "expand_bilingual":         expand_bilingual,
+    "khaleeji_dialect_bridge":  khaleeji_dialect_bridge,
 }
 
 # Retrieval tools that Agent 2 owns — listed here so the guard below can give

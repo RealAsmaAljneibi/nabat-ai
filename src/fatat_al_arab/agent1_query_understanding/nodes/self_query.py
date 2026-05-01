@@ -273,15 +273,15 @@ def self_query_node(state: AgentState) -> AgentState:
 
     raw = _extract_with_timeout(query_ar, query_en)
 
+    from ...state import trace_append
+
     if raw is None:
-        # §5 fallback — empty filters means retrieval scans the full index
-        updated_qc = {
-            **qc,
-            "filters_hard": {},
-            "filters_soft": {},
-            "self_query_raw": {},
+        updated_qc = {**qc, "filters_hard": {}, "filters_soft": {}, "self_query_raw": {}}
+        return {
+            **state,
+            "query_context": updated_qc,
+            "agent_trace": trace_append(state, stage="3", icon="🔎", label="Self-Query Filters", summary="No filters extracted (§5 fallback — full index scan)"),
         }
-        return {**state, "query_context": updated_qc}
 
     hard_filters, soft_filters = _build_filters(raw)
 
@@ -290,13 +290,20 @@ def self_query_node(state: AgentState) -> AgentState:
         hard_filters, soft_filters, raw.get("confidence", 0.0),
     )
 
-    updated_qc = {
-        **qc,
-        "filters_hard": hard_filters,
-        "filters_soft": soft_filters,
-        "self_query_raw": raw,
+    if hard_filters or soft_filters:
+        parts = [f"{k}={v!r}" for k, v in {**hard_filters, **soft_filters}.items()]
+        hard_keys = set(hard_filters)
+        annotated = [f"{p} (hard)" if p.split("=")[0] in hard_keys else f"{p} (soft)" for p in parts]
+        trace_summary = " · ".join(annotated[:4])
+    else:
+        trace_summary = "No filters matched"
+
+    updated_qc = {**qc, "filters_hard": hard_filters, "filters_soft": soft_filters, "self_query_raw": raw}
+    return {
+        **state,
+        "query_context": updated_qc,
+        "agent_trace": trace_append(state, stage="3", icon="🔎", label="Self-Query Filters", summary=trace_summary),
     }
-    return {**state, "query_context": updated_qc}
 
 
 def extract_filters(query_ar: str, query_en: str) -> dict:

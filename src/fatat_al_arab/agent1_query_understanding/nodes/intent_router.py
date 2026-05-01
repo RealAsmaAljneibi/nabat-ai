@@ -37,7 +37,7 @@ import logging
 import re
 from typing import Optional
 
-from ...state import AgentState, make_query_context
+from ...state import AgentState, make_query_context, trace_append
 
 logger = logging.getLogger(__name__)
 
@@ -466,9 +466,20 @@ def _classify(raw_query: str) -> dict:
     }
 
 
+# ── Trace helper ─────────────────────────────────────────────────────────────
+
+def _router_trace_summary(qc: dict) -> str:
+    track  = qc.get("track") or "poetic_rag"
+    intent = qc.get("deterministic_intent") or qc.get("detected_intent") or ""
+    conf   = qc.get("intent_confidence_router") or qc.get("intent_confidence") or 0.0
+    src    = qc.get("router_source") or "regex"
+    label  = f"{intent}" if intent and intent != track else track
+    return f"{label} via {src} (conf: {conf:.2f})" if conf else f"{label} via {src}"
+
+
 # ── Node callable ────────────────────────────────────────────────────────────
 
-def intent_router_node(state: AgentState) -> AgentState:
+def _intent_router_node_impl(state: AgentState) -> AgentState:
     """
     Stage 0.5a — lightweight deterministic fast-path.
     Checks:
@@ -668,3 +679,13 @@ def intent_router_node(state: AgentState) -> AgentState:
     state["query_context"] = new_qc  # type: ignore[assignment]
 
     return state
+
+
+def intent_router_node(state: AgentState) -> AgentState:
+    """Public node: runs _intent_router_node_impl then stamps the trace entry."""
+    result = _intent_router_node_impl(state)
+    qc = result.get("query_context") or {}
+    return {**result, "agent_trace": trace_append(
+        result, stage="0.5", icon="🧭", label="Intent Router",
+        summary=_router_trace_summary(qc),
+    )}

@@ -238,6 +238,12 @@ def retrieve_node(state: AgentState) -> AgentState:
         logger.error("retrieve_node: index load failed: %s", exc)
         dropped.append("all")
 
+    from fatat_al_arab.state import trace_append
+    _n = lambda r: len(r)
+    trace_summary = (
+        f"BM25: {_n(bm25_results)} · Dense: {_n(dense_results)} · ColBERT: {_n(colbert_results)}"
+        + (f" (dropped: {', '.join(dropped)})" if dropped else "")
+    )
     return {
         **state,
         "bm25_results":    bm25_results,
@@ -245,4 +251,5 @@ def retrieve_node(state: AgentState) -> AgentState:
         "colbert_results": colbert_results,
         "retriever_timings": timings,
         "retrieval_dropped_retrievers": dropped,
+        "agent_trace": trace_append(state, stage="4", icon="📡", label="Triple Retrieval", summary=trace_summary),
     }

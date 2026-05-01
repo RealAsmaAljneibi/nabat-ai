@@ -118,23 +118,49 @@ def _make_chunk_id(anchor_id: str, level: str, seq: int) -> str:
     return f"{anchor_id}__{level}__{seq:04d}"
 
 
+def _entry_text(entry: dict) -> str:
+    """
+    Primary text for an entry — handles both registry schemas:
+      - Primary manuscripts: matla_text (original field)
+      - Unified registry / secondary sources: text (canonical field)
+    Always returns normalised Arabic.
+    """
+    return normalise_arabic(entry.get("matla_text") or entry.get("text") or "")
+
+
+def _entry_anchor_id(entry: dict) -> str:
+    """
+    Unique ID for an entry — handles both schemas:
+      - Primary manuscripts: source_row_id
+      - Unified registry / secondary sources: anchor_id
+    """
+    return entry.get("anchor_id") or entry.get("source_row_id") or ""
+
+
+def _entry_source_page(entry: dict) -> str:
+    """
+    Source page — handles both schemas:
+      - Primary manuscripts: page_number (int)
+      - Secondary sources: source_page (string, e.g. "0-3200ms")
+    Always returns a string.
+    """
+    sp = entry.get("source_page")
+    if sp:
+        return str(sp)
+    pn = entry.get("page_number")
+    return str(pn) if pn else ""
+
+
 def _verse_text(entry: dict) -> str:
-    """Primary text for a verse chunk = normalised matla."""
-    return normalise_arabic(entry.get("matla_text") or "")
+    return _entry_text(entry)
 
 
 def _group_text(entries: list[dict]) -> str:
-    """Concatenate matla texts for a sliding-window group chunk."""
-    return " | ".join(
-        normalise_arabic(e.get("matla_text") or "") for e in entries
-    )
+    return " | ".join(_entry_text(e) for e in entries)
 
 
 def _poem_text(entries: list[dict]) -> str:
-    """Concatenate all matla texts for a full-poem chunk."""
-    return " | ".join(
-        normalise_arabic(e.get("matla_text") or "") for e in entries
-    )
+    return " | ".join(_entry_text(e) for e in entries)
 
 
 def _manuscript_text(ms_info: dict, entries: list[dict]) -> str:
@@ -175,7 +201,7 @@ def _manuscript_text(ms_info: dict, entries: list[dict]) -> str:
     header = " | ".join(header_parts)
 
     if entries:
-        verses = " | ".join(normalise_arabic(e.get("matla_text") or "") for e in entries)
+        verses = " | ".join(_entry_text(e) for e in entries)
         return f"{header} || {verses}" if header else verses
     else:
         # No indexed verses yet — header-only chunk. Still searchable by name/provenance.
@@ -191,7 +217,7 @@ def _poet_text(poet_name: str, entries: list[dict]) -> str:
     in the chunk text so BM25 can match it.
     """
     header = normalise_arabic(poet_name)
-    verses  = " | ".join(normalise_arabic(e.get("matla_text") or "") for e in entries)
+    verses  = " | ".join(_entry_text(e) for e in entries)
     return f"{header} || {verses}" if header else verses
 
 
@@ -222,7 +248,7 @@ def _era_text(era_label: str, ms_entries: list[tuple[dict, list[dict]]]) -> str:
     parts  = []
     for ms_info, entries in ms_entries:
         ms_name = ms_info.get("arabic_name") or ms_info.get("short_key", "")
-        verses  = " | ".join(normalise_arabic(e.get("matla_text") or "") for e in entries)
+        verses  = " | ".join(_entry_text(e) for e in entries)
         parts.append(f"{ms_name}: {verses}")
     return f"{header} || " + " ||| ".join(parts)
 
@@ -236,7 +262,7 @@ def _genre_chunk_text(genre: str, entries: list[dict]) -> str:
     enormous and semantically noisy. Per-manuscript keeps it coherent.
     """
     header = f"نوع: {genre}"
-    verses  = " | ".join(normalise_arabic(e.get("matla_text") or "") for e in entries)
+    verses  = " | ".join(_entry_text(e) for e in entries)
     return f"{header} || {verses}"
 
 
@@ -246,7 +272,7 @@ def _emotion_chunk_text(emotion: str, entries: list[dict]) -> str:
     carrying that emotion in the same manuscript.
     """
     header = f"مشاعر: {emotion}"
-    verses  = " | ".join(normalise_arabic(e.get("matla_text") or "") for e in entries)
+    verses  = " | ".join(_entry_text(e) for e in entries)
     return f"{header} || {verses}"
 
 
@@ -259,10 +285,10 @@ def _chunk_payload(entry: dict) -> dict:
     that were not enriched (e.g. if building from the plain registry).
     """
     return {
-        "anchor_id":           entry.get("source_row_id") or "",
+        "anchor_id":           _entry_anchor_id(entry),
         "poet_name":           entry.get("poet_name")     or "",
         "source_volume":       entry.get("source_volume") or "",
-        "source_page":         int(entry.get("page_number") or 0),
+        "source_page":         _entry_source_page(entry),
         "source_image_path":   entry.get("source_image_path") or "",
         "manuscript_short_key": entry.get("manuscript_short_key") or "",
         # M3 — silver-baseline genre enrichment (absent = abstained)
@@ -270,6 +296,13 @@ def _chunk_payload(entry: dict) -> dict:
         "genre_confidence":    float(entry.get("genre_confidence") or 0.0),
         "genre_source":        entry.get("genre_source")     or "",
         "emotions":            list(entry.get("emotions")    or []),
+        # Source transparency — populated by unified registry
+        "source_type":         entry.get("source_type")      or "manuscript",
+        "data_tier":           entry.get("data_tier")         or "primary",
+        "is_secondary_source": bool(entry.get("is_secondary_source", False)),
+        # Poem-parent link — groups all bayts of the same poem
+        "parent_poem_id":      entry.get("parent_poem_id")   or "",
+        "poem_matla":          entry.get("poem_matla")        or entry.get("matla") or "",
     }
 
 

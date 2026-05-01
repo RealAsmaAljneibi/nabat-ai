@@ -20,16 +20,27 @@ doc/IMPLEMENTATION_PLAN.md M2c. §2.9 guardrails still apply: every answer
 emitted by this module cites the underlying file + field, so the provenance
 trail is preserved.
 
+TERMINOLOGY (enforced throughout this module):
+    bayt (بيت, pl. أبيات) — a single verse couplet; the atomic unit stored in
+        the registry. Each registry entry = one bayt.
+    full poem (قصيدة) — a complete multi-bayt poem. Phase 1–3 pages are
+        transcribed bayt-by-bayt (~39 full poems, 720 bayts). Phase 4 TOC
+        entries record only the matla (opening bayt) of 1,502 distinct poems —
+        those poems are *known* but not fully transcribed.
+    Never conflate bayt count with poem count.
+
 Public API:
-    count_poems() -> int
+    count_bayts() -> int              # total registry entries (= bayts indexed)
+    count_toc_poems() -> int          # distinct poems known from TOC (matla only)
+    count_full_poems() -> int         # fully transcribed poems (Phase 1-3 pages)
     count_poets() -> int
     count_manuscripts() -> int
     count_pages() -> int
-    manuscript_age_range() -> dict    # {oldest_start, newest_end, span_years}
-    regions_of_origin() -> list[str]  # unique regions across registry
-    corpus_summary() -> dict          # one-shot all-of-the-above
+    manuscript_age_range() -> dict
+    regions_of_origin() -> list[str]
+    corpus_summary() -> dict
     poet_counts_top_n(n: int) -> list[tuple[str, int]]
-    manuscripts_overview() -> list[dict]   # one row per manuscript for Tab B sidebar
+    manuscripts_overview() -> list[dict]
 """
 
 from __future__ import annotations
@@ -98,15 +109,49 @@ _ANCHORS:  list[dict] = _load_json(_ANCHORS_PATH)  or []
 
 # ── Counting helpers ──────────────────────────────────────────────────────────
 
-def count_poems() -> int:
+def count_bayts() -> int:
     """
-    How many distinct poems are in the Phase-4 dictionary.
+    Total number of bayts (verse couplets) in the registry.
 
-    Why this is the right number for "how many poems": each entry in
-    anchor_registry_phase4.json represents one poem (one matla line from one
-    TOC row). 1,502 entries == 1,502 poems the RAG layer can cite.
+    Each registry entry = one bayt. This includes:
+      - Phase 1-3: 720 bayts from ~39 fully transcribed poem pages
+      - Phase 4:   1,502 matla bayts (opening verse of each TOC poem)
+    Total: 2,222 bayts. NOT 2,222 poems.
     """
     return len(_ANCHORS)
+
+
+def count_toc_poems() -> int:
+    """
+    Distinct poems *known* from the TOC — represented by their matla bayt only.
+
+    Phase 4 entries have layout_type starting with 'type_'. Each is the
+    opening bayt of one poem; the body was not transcribed. So 1,502 poems
+    are named and citable, but only one bayt of each is in the corpus.
+    """
+    return sum(1 for a in _ANCHORS if (a.get("layout_type") or "").startswith("type_"))
+
+
+def count_full_poems() -> int:
+    """
+    Fully transcribed poems — Phase 1-3 page scans where every bayt was
+    captured. Grouped by source_page_key: each page ≈ one poem.
+
+    These are the only poems where the complete text is retrievable.
+    """
+    pages: set[str] = set()
+    for a in _ANCHORS:
+        lt = a.get("layout_type") or ""
+        if lt.startswith("phase"):
+            pk = a.get("source_page_key") or ""
+            if pk:
+                pages.add(pk)
+    return len(pages)
+
+
+# Backward-compat alias — callers that used count_poems() still work.
+# Do NOT use this in new code; use count_bayts() or count_toc_poems() instead.
+count_poems = count_bayts
 
 
 def count_poets() -> int:
@@ -235,16 +280,21 @@ def corpus_summary() -> dict:
     """
     age = manuscript_age_range()
     return {
-        "poems":              count_poems(),
-        "poets":              count_poets(),
-        "manuscripts":        count_manuscripts(),
-        "manuscripts_with_toc": count_manuscripts_with_toc(),
-        "pages_indexed":      count_pages(),
-        "oldest_start":       age["oldest_start"],
-        "newest_end":         age["newest_end"],
-        "span_years":         age["span_years"],
-        "regions":            regions_of_origin(),
-        "collectors":         collectors(),
+        # Bayt counts (verse-level entries) — use these for "how many bayts"
+        "bayts":                  count_bayts(),
+        # Poem-level counts — use these for "how many poems"
+        "toc_poems":              count_toc_poems(),    # named but only matla stored
+        "full_poems_transcribed": count_full_poems(),   # complete bayts available
+        # Corpus structure
+        "poets":                  count_poets(),
+        "manuscripts":            count_manuscripts(),
+        "manuscripts_with_toc":   count_manuscripts_with_toc(),
+        "pages_indexed":          count_pages(),
+        "oldest_start":           age["oldest_start"],
+        "newest_end":             age["newest_end"],
+        "span_years":             age["span_years"],
+        "regions":                regions_of_origin(),
+        "collectors":             collectors(),
         "source_files": {
             "registry": str(_REGISTRY_PATH.name),
             "anchors":  str(_ANCHORS_PATH.name),
@@ -254,10 +304,11 @@ def corpus_summary() -> dict:
 
 def poet_counts_top_n(n: int = 10) -> list[tuple[str, int]]:
     """
-    Top-N most prolific poets (poet_name, poem_count).
-    Used by Persona-2 / Persona-4 questions like "who wrote the most poems
-    in this corpus?" or "is my ancestor represented here?" (by scanning the
-    name list rather than running retrieval).
+    Top-N poets by bayt count (poet_name, bayt_count).
+    "Bayt count" = number of registry entries attributed to that poet.
+    For Phase 4 poets this equals the number of poems they have in the TOC
+    (one matla bayt each). For Phase 1-3 poets it equals the number of
+    fully transcribed bayts. Do NOT present these counts as "poem counts".
     """
     counter: Counter[str] = Counter()
     for a in _ANCHORS:
@@ -283,14 +334,14 @@ def manuscripts_overview() -> list[dict]:
     for m in sorted(_REGISTRY, key=lambda e: e["number"]):
         key = m["short_key"]
         rows.append({
-            "number":         m["number"],
-            "short_key":      key,
-            "arabic_name":    m["arabic_name"],
-            "english_name":   m["english_name"],
-            "poems_indexed":  per_ms.get(key, 0),
-            "circa_date":     _format_date(m),
-            "region":         m.get("region_of_origin") or "—",
-            "collector":      m.get("collector") or "—",
+            "number":        m["number"],
+            "short_key":     key,
+            "arabic_name":   m["arabic_name"],
+            "english_name":  m["english_name"],
+            "bayts_indexed": per_ms.get(key, 0),  # bayts, not poems
+            "circa_date":    _format_date(m),
+            "region":        m.get("region_of_origin") or "—",
+            "collector":     m.get("collector") or "—",
         })
     return rows
 
@@ -464,7 +515,7 @@ def poet_in_corpus(name: str) -> dict:
             key = a.get("manuscript_short_key") or ""
             if key:
                 mss.add(key)
-    return {"found": count > 0, "poem_count": count, "manuscripts": sorted(mss)}
+    return {"found": count > 0, "bayt_count": count, "manuscripts": sorted(mss)}
 
 
 # ── CLI smoke test ────────────────────────────────────────────────────────────

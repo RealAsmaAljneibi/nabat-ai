@@ -45,7 +45,16 @@ except ImportError:
     class _StStub:
         """Minimal no-op stub so tests can import this module without streamlit."""
         def __getattr__(self, name):
-            return lambda *a, **kw: None
+            # Why: decorators like @st.cache_data(ttl=300) call __getattr__ twice:
+            # first st.cache_data returns a callable, then that callable is called
+            # with ttl=300 and must return a decorator (identity function).
+            # @st.cache_resource calls __getattr__ once and uses the result directly
+            # as a decorator, so the result must also be callable with a function arg.
+            def _passthrough(*a, **kw):
+                if len(a) == 1 and callable(a[0]) and not kw:
+                    return a[0]          # @st.cache_resource fn → identity
+                return lambda fn: fn     # @st.cache_data(ttl=300) → identity decorator
+            return _passthrough
 
         def session_state(self):
             return {}
@@ -164,17 +173,31 @@ def _format_citation(citation: dict) -> str:
             out += f" — p. {page}"
         return out
 
-    poet   = citation.get("poet_name") or citation.get("poet") or "Unknown poet"
-    volume = citation.get("source_volume") or citation.get("volume") or ""
-    page   = citation.get("source_page") or citation.get("page_number") or citation.get("page") or ""
+    src_type = (citation.get("source_type") or "manuscript").lower()
+    if "oral" in src_type or "audio" in src_type:
+        badge = "🎙️"
+    elif "online" in src_type or "web" in src_type:
+        badge = "🌐"
+    else:
+        badge = "📜"
+
+    poet       = citation.get("poet_name") or citation.get("poet") or "Unknown poet"
+    volume     = citation.get("source_volume") or citation.get("volume") or ""
+    page       = citation.get("source_page") or citation.get("page_number") or citation.get("page") or ""
+    poem_matla = citation.get("poem_matla") or ""
+    text       = citation.get("text") or ""
 
     parts = [str(poet)]
+    # Show poem opening verse when the retrieved chunk is a bayt (not the matla itself)
+    if poem_matla and poem_matla != text:
+        truncated = poem_matla[:60] + "…" if len(poem_matla) > 60 else poem_matla
+        parts.append(f'Poem: "{truncated}"')
     if volume:
         parts.append(f"Vol. {volume}")
     if page:
         parts.append(f"p. {page}")
 
-    return " — ".join(parts)
+    return f"{badge} {' — '.join(parts)}"
 
 
 def _trim_history(history: list[dict], max_turns: int = 5) -> list[dict]:
@@ -551,6 +574,50 @@ def _render_citations(citations: list[dict]) -> None:
         st.markdown(f"- {_format_citation(cit)}")
 
 
+def _render_agent_trace(result: dict) -> None:
+    """
+    Unified Agent Reasoning Trace panel — single collapsible timeline showing
+    every decision the pipeline made, in chronological order.
+    This is Priority 1 of the Crown Prince Office demo: observers can watch
+    the system think, doubt itself, and self-correct without opening 5 expanders.
+    """
+    trace: list[dict] = result.get("agent_trace") or []
+    if not trace:
+        return
+
+    # Colour verdicts for CRAG and Self-RAG entries
+    verdict_colour = {"pass": "🟢", "retry": "🟡", "flag": "🔴",
+                      "Correct": "🟢", "Ambiguous": "🟡", "Incorrect": "🔴"}
+
+    with st.expander("🤖 Agent Reasoning Trace / مسار تفكير الوكيل", expanded=False):
+        for entry in trace:
+            icon    = entry.get("icon", "•")
+            stage   = entry.get("stage", "")
+            label   = entry.get("label", "")
+            summary = entry.get("summary", "")
+            detail  = entry.get("detail", "")
+
+            # Colour-code verdicts embedded in the summary
+            for verdict, dot in verdict_colour.items():
+                summary = summary.replace(f"→ {verdict}", f"→ {dot} {verdict}")
+
+            st.markdown(
+                f"<div style='display:flex;gap:10px;align-items:baseline;padding:4px 0'>"
+                f"<span style='font-size:18px'>{icon}</span>"
+                f"<span style='color:#888;font-size:11px;min-width:28px'>§{stage}</span>"
+                f"<span style='font-weight:600;min-width:160px'>{label}</span>"
+                f"<span style='color:#ccc'>{summary}</span>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+            if detail:
+                # Render each line of multi-line detail separately so quoted
+                # rationale sentences and re-query hints each get their own row
+                for detail_line in detail.split("\n"):
+                    if detail_line.strip():
+                        st.caption(f"  ↳ {detail_line.strip()}")
+
+
 def _render_genre_badge(result: dict) -> None:
     """
     Show the 🔸 silver-baseline genre badge when genre data is available.
@@ -696,6 +763,7 @@ def _render_default_view(result: dict) -> None:
             _render_three_layer_cards(al_maktub or "—", orthographic or "—", al_mantuq or "—")
 
     _render_citations(formatted.get("citations") or [])
+    _render_agent_trace(result)
 
 
 def _render_philology_view(result: dict) -> None:
@@ -750,6 +818,23 @@ def _render_philology_view(result: dict) -> None:
                 st.markdown(f"{colour} **{label}** (conf={confidence:.2f}) — `{cid}`")
                 if rationale:
                     st.caption(rationale)
+
+    # Self-RAG reflection scores
+    self_rag_scores: dict = result.get("self_rag_scores") or {}
+    if self_rag_scores:
+        verdict = result.get("self_rag_verdict") or "—"
+        retries = result.get("self_rag_retries") or 0
+        colour  = {"pass": "🟢", "retry": "🟡", "flag": "🔴"}.get(verdict, "⚪")
+        with st.expander(f"🪞 Self-RAG reflection — {colour} {verdict} ({retries} retr{'y' if retries == 1 else 'ies'})"):
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Faithfulness",  f"{self_rag_scores.get('faithfulness',  0.0):.2f}")
+            c2.metric("Relevance",     f"{self_rag_scores.get('relevance',     0.0):.2f}")
+            c3.metric("Completeness",  f"{self_rag_scores.get('completeness',  0.0):.2f}")
+            failed = result.get("failed_claims") or []
+            if failed:
+                st.markdown("**Unsupported claims flagged:**")
+                for claim in failed:
+                    st.markdown(f"- _{claim}_")
 
     # Self-query filters used
     qc = result.get("query_context") or {}
@@ -1757,9 +1842,9 @@ bash setup.sh</pre>
     st.subheader("🔄 Rebuild RAG Index")
     st.markdown(
         '<p style="font-size:13.5px;color:var(--ink2);line-height:1.7;margin-bottom:16px">'
-        "The Scholar Workbench searches a pre-built vector index — it cannot find newly added poems "
-        "until the index is rebuilt. Rebuilding re-encodes every poem in the registry "
-        "(2,222 anchors across Phases 1–4 at nine chunk levels) into searchable vectors. "
+        "The Scholar Workbench searches a pre-built vector index — it cannot find newly added bayts "
+        "until the index is rebuilt. Rebuilding re-encodes every bayt in the registry "
+        "(2,222 bayts across Phases 1–4 at nine chunk levels) into searchable vectors. "
         "Run this once after you finish adding or editing entries in the registry. "
         "It takes about 60–90 seconds and the result is immediately live in Tab A."
         "</p>",
@@ -1772,7 +1857,7 @@ bash setup.sh</pre>
         st.warning("Index not found — rebuild required before Scholar Workbench can answer queries.")
 
     if st.button("🔄 Rebuild index now", key="rebuild_btn"):
-        with st.spinner("Rebuilding — encoding 2,222 anchors × 9 chunk levels…"):
+        with st.spinner("Rebuilding — encoding 2,222 bayts × 9 chunk levels…"):
             rb = _rebuild_index()
         if rb["success"]:
             s = rb["stats"]
@@ -1933,7 +2018,7 @@ def _sidebar_era_bubbles_html(era_data: dict[str, dict[str, int]]) -> str:
         f'<div style="line-height:0">{"".join(parts)}</div>'
         f'<div style="margin-top:3px;font-size:9.5px;color:#A09080;'
         f'font-style:italic;font-family:Fraunces,serif">'
-        f'🔸 heuristic · ~43% cov · {total:,} anchors</div>'
+        f'🔸 heuristic · ~43% cov · {total:,} bayts</div>'
     )
 
 
@@ -1951,8 +2036,8 @@ def _render_sidebar() -> None:
         src_path = str(_REPO_ROOT / "src")
         if src_path not in sys.path:
             sys.path.insert(0, src_path)
-        from al_nassikh.corpus_stats import count_poems as _count_poems  # type: ignore[import]
-        _total_anchors = _count_poems()
+        from al_nassikh.corpus_stats import count_bayts as _count_bayts  # type: ignore[import]
+        _total_anchors = _count_bayts()
     except Exception:
         _total_anchors = 2222
 
@@ -2931,9 +3016,9 @@ def _sidebar_corpus_html(total: int = 1502, transcribed_pct: int = 64, translate
     return f"""
 <div class="s-label">Corpus coverage</div>
 <div style="margin-top:10px">
-  <div class="corpus-num">{total:,} <span style="font-size:13px;color:var(--ink3);font-style:italic">anchors</span></div>
+  <div class="corpus-num">{total:,} <span style="font-size:13px;color:var(--ink3);font-style:italic">bayts</span></div>
   <div style="font-size:12px;color:var(--ink2);margin-top:6px;line-height:1.5">
-    Phase-4 dictionary · <b style="font-weight:500">25 manuscripts</b> · <b style="font-weight:500">1750–1940</b>
+    Phases 1–4 · <b style="font-weight:500">25 manuscripts</b> · <b style="font-weight:500">c. 1800–1970</b>
   </div>
   <div class="corpus-bar"><span class="corpus-bar-fill"></span></div>
   <div class="corpus-stats">{transcribed_pct}% TRANSCRIBED · {translated_pct}% TRANSLATED</div>
@@ -2967,7 +3052,7 @@ def _sidebar_index_html(index_ok: bool, total_anchors: int = 2222, total_chunks:
 <div style="margin-top:8px">
   <div class="index-row"><span style="color:var(--ink2)">Vector index</span>{vector_status}</div>
   <div class="index-row"><span style="color:var(--ink2)">BM25 sparse</span>{bm25_status}</div>
-  <div class="index-row"><span style="color:var(--ink2)">Anchors</span><span class="idx-dim">{total_anchors:,} entries</span></div>
+  <div class="index-row"><span style="color:var(--ink2)">Bayts indexed</span><span class="idx-dim">{total_anchors:,} entries</span></div>
   <div class="index-row"><span style="color:var(--ink2)">Chunks</span><span class="idx-dim">{chunks_display}</span></div>
   <div class="index-row"><span style="color:var(--ink2)">Phases</span><span class="idx-dim">1–4 complete</span></div>
 </div>
@@ -3202,7 +3287,9 @@ def _render_browse_corpus() -> None:
     st.markdown('<div class="main-content">', unsafe_allow_html=True)
     st.markdown(
         '<h2 class="lede">Browse the corpus — <em>تصفّح الأرشيف</em></h2>'
-        '<p class="lede-sub">2,222 anchors across all four phases (Phases 1–4). '
+        '<p class="lede-sub">2,222 bayts across all four phases (Phases 1–4): '
+        '720 fully-transcribed bayts from ~39 poems (Phase 1–3) · '
+        '1,502 matla bayts from TOC poems (Phase 4). '
         'Filter by poet, manuscript, or genre.</p>',
         unsafe_allow_html=True,
     )
@@ -3297,7 +3384,7 @@ def _render_browse_corpus() -> None:
     if selected_ms != "— any manuscript —":
         filtered = [r for r in filtered if r.get("manuscript_short_key") == selected_ms]
 
-    st.caption(f"Showing {len(filtered):,} of {len(records):,} anchors")
+    st.caption(f"Showing {len(filtered):,} of {len(records):,} bayts")
 
     # ── Table ──────────────────────────────────────────────────────────────────
     rows_html = ""
@@ -3671,7 +3758,7 @@ def _render_governance() -> None:
             unsafe_allow_html=True,
         )
     _total_entries = sum(r[2] for r in _phase_rows)
-    st.caption(f"Combined: **{_total_entries:,}** anchors · {corpus_stats['total']:,} vector chunks · 25 manuscripts")
+    st.caption(f"Combined: **{_total_entries:,}** bayts · {corpus_stats['total']:,} vector chunks · 25 manuscripts")
 
     # ── CRAG verdict distribution ────────────────────────────────────────────
     crag_dist = correctness.get("crag_verdict_distribution") or {}

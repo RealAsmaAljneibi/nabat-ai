@@ -163,6 +163,13 @@ class AgentState(TypedDict):
     # calling run_agent1 when the query looks like a debug/inspector request.
     debug_snapshot:       NotRequired[dict]  # copied from prior turn AgentState
 
+    # ── Agent Reasoning Trace (EXT-4) ────────────────────────────────
+    # Chronological log built up as nodes execute. Each entry is a dict:
+    #   {"stage": str, "icon": str, "label": str, "summary": str, "detail": str}
+    # The Streamlit UI renders this as a single collapsible timeline panel so
+    # observers can watch the system reason without opening 5 separate expanders.
+    agent_trace:        NotRequired[list[dict]]
+
     # ── Debug / evaluation metadata ──────────────────────────────────
     stage_timings:      NotRequired[dict]   # {stage_name: ms} for M10 efficiency axis
     conversation_id:    NotRequired[str]    # multi-turn session ID
@@ -204,7 +211,20 @@ def make_agent_state(raw_query: str) -> AgentState:
         guardrail_flags=[],
         retrieval_dropped_retrievers=[],
         stage_timings={},
+        agent_trace=[],
     )
+
+
+def trace_append(state: dict, stage: str, icon: str, label: str, summary: str, detail: str = "") -> list[dict]:
+    """
+    Read the current agent_trace from state, append a new entry, return the updated list.
+    Each node calls this and writes the result back as {"agent_trace": trace_append(...)}.
+
+    Why here: centralising the schema means the UI renderer has one contract to depend on.
+    """
+    current = list(state.get("agent_trace") or [])
+    current.append({"stage": stage, "icon": icon, "label": label, "summary": summary, "detail": detail})
+    return current
 
 
 def validate_query_context(qc: dict) -> None:

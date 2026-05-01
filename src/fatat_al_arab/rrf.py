@@ -49,7 +49,7 @@ class ScoredChunk:
     anchor_id:   str              # joins back to anchor_registry_phase4.json
     poet_name:   str   = ""
     source_volume: str = ""
-    source_page:   int = 0
+    source_page:   str = ""
     source_image_path: str = ""
     manuscript_short_key: str = ""
     # M3: genre + emotion fields (silver baseline — may be "غير_محدد" if classifier abstained)
@@ -57,24 +57,36 @@ class ScoredChunk:
     genre_confidence:  float      = 0.0          # 0.0–1.0 margin score from heuristic
     genre_source:      str        = ""           # "heuristic_v1" | "human" | ""
     emotions:          list[str]  = field(default_factory=list)  # e.g. ["longing", "grief"]
+    # Source transparency (unified registry)
+    source_type:         str  = ""    # "manuscript" | "oral_tradition" | "online"
+    data_tier:           str  = ""    # "primary" | "secondary"
+    is_secondary_source: bool = False
+    # Poem-parent link — ties each bayt back to its parent poem
+    parent_poem_id: str = ""   # stable group key for all bayts of the same poem
+    poem_matla:     str = ""   # opening verse (matla) of the parent poem
     extra:       dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
-            "chunk_id":           self.chunk_id,
-            "rrf_score":          self.rrf_score,
-            "text":               self.text,
-            "level":              self.level,
-            "anchor_id":          self.anchor_id,
-            "poet_name":          self.poet_name,
-            "source_volume":      self.source_volume,
-            "source_page":        self.source_page,
-            "source_image_path":  self.source_image_path,
+            "chunk_id":             self.chunk_id,
+            "rrf_score":            self.rrf_score,
+            "text":                 self.text,
+            "level":                self.level,
+            "anchor_id":            self.anchor_id,
+            "poet_name":            self.poet_name,
+            "source_volume":        self.source_volume,
+            "source_page":          self.source_page,
+            "source_image_path":    self.source_image_path,
             "manuscript_short_key": self.manuscript_short_key,
-            "genre":              self.genre,
-            "genre_confidence":   self.genre_confidence,
-            "genre_source":       self.genre_source,
-            "emotions":           self.emotions,
+            "genre":                self.genre,
+            "genre_confidence":     self.genre_confidence,
+            "genre_source":         self.genre_source,
+            "emotions":             self.emotions,
+            "source_type":          self.source_type,
+            "data_tier":            self.data_tier,
+            "is_secondary_source":  self.is_secondary_source,
+            "parent_poem_id":       self.parent_poem_id,
+            "poem_matla":           self.poem_matla,
             **self.extra,
         }
 
@@ -138,6 +150,11 @@ def fuse(
                 genre_confidence=c.genre_confidence,
                 genre_source=c.genre_source,
                 emotions=list(c.emotions),
+                source_type=c.source_type,
+                data_tier=c.data_tier,
+                is_secondary_source=c.is_secondary_source,
+                parent_poem_id=c.parent_poem_id,
+                poem_matla=c.poem_matla,
                 extra=c.extra,
             )
         )

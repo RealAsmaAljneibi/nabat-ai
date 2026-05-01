@@ -40,8 +40,10 @@ logger = logging.getLogger(__name__)
 
 _AR = {
     "count_poems":
-        "تحتوي المجموعة على **{poems:,}** قصيدة مفهرسة في {mss_with_toc} مخطوطة "
-        "(من أصل {mss_total} مخطوطة في السجل الكامل).",
+        "تحتوي المجموعة على **{bayts:,}** بيتاً مفهرساً في {mss_with_toc} مخطوطة "
+        "(من أصل {mss_total} مخطوطة). "
+        "منها **{toc_poems:,}** بيت مطلع من قصائد الفهرس، "
+        "و**{full_poems:,}** قصيدة مكتملة التفريغ بيتاً بيتاً.",
     "count_poets":
         "عدد الشعراء المميزين في المجموعة: **{poets:,}** شاعراً.",
     "list_poets":
@@ -59,7 +61,7 @@ _AR = {
         "تم فهرسة **{pages:,}** صفحة مصدرية عبر جميع المخطوطات المتاحة.",
     "corpus_overview":
         "ملخص المجموعة:\n"
-        "- القصائد المفهرسة: **{poems:,}**\n"
+        "- الأبيات المفهرسة: **{bayts:,}** بيتاً ({toc_poems:,} مطلع من فهرس + {full_poems} قصيدة كاملة)\n"
         "- الشعراء المميزون: **{poets:,}**\n"
         "- المخطوطات الكاملة: **{mss_total}** (منها {mss_with_toc} لها فهارس قابلة للقراءة)\n"
         "- الصفحات المصدرية: **{pages:,}**\n"
@@ -75,8 +77,10 @@ _AR = {
 
 _EN = {
     "count_poems":
-        "The corpus contains **{poems:,}** indexed poems across {mss_with_toc} "
-        "manuscripts (out of {mss_total} canonical manuscripts in the full registry).",
+        "The corpus contains **{bayts:,}** indexed bayts (verse couplets) across {mss_with_toc} "
+        "manuscripts (out of {mss_total} canonical manuscripts). "
+        "Of these, **{toc_poems:,}** are opening bayts (matla) from TOC-listed poems, "
+        "and **{full_poems}** poems are fully transcribed bayt-by-bayt.",
     "count_poets":
         "There are **{poets:,}** distinct poets represented in the corpus.",
     "list_poets":
@@ -94,7 +98,7 @@ _EN = {
         "**{pages:,}** distinct source pages have been indexed across all available manuscripts.",
     "corpus_overview":
         "Corpus summary:\n"
-        "- Indexed poems: **{poems:,}**\n"
+        "- Bayts indexed: **{bayts:,}** ({toc_poems:,} matla from TOC + {full_poems} fully transcribed poems)\n"
         "- Distinct poets: **{poets:,}**\n"
         "- Total manuscripts: **{mss_total}** ({mss_with_toc} with readable TOC)\n"
         "- Source pages indexed: **{pages:,}**\n"
@@ -142,7 +146,9 @@ def _build_answer(intent: str, lang: str, s: dict) -> str:
     )
 
     return tmpl.format(
-        poems         = s.get("poems", 0),
+        bayts         = s.get("bayts", s.get("poems", 0)),   # new key; fall back to old for compat
+        toc_poems     = s.get("toc_poems", 0),
+        full_poems    = s.get("full_poems_transcribed", 0),
         poets         = s.get("poets", 0),
         mss_total     = s.get("manuscripts", 0),
         mss_with_toc  = s.get("manuscripts_with_toc", 0),
@@ -175,7 +181,7 @@ def _poet_bullet_list(items: list[tuple[str, int]], lang: str) -> str:
     if not items:
         return "—"
     bullet = "• " if lang == "ar" else "- "
-    noun = "قصيدة" if lang == "ar" else "poems"
+    noun = "بيتاً" if lang == "ar" else "bayts"
     return "\n".join(f"{bullet}{name} — {count} {noun}" for name, count in items)
 
 
@@ -317,7 +323,7 @@ Operator pipeline (`triage.py`, `bleed_suppress.py`, `standardise.py`) is
 
 _CAPABILITIES_AR = """**NABAT-AI** مساعد بحثي ثنائي اللغة للشعر النبطي الخليجي.
 
-المجموعة: **{poems:,}** قصيدة مفهرسة في **{mss_with_toc}** مخطوطة من أصل **{mss_total}** مخطوطة، تعود إلى حوالي **{oldest}–{newest} م**.
+المجموعة: **{bayts:,}** بيتاً مفهرساً في **{mss_with_toc}** مخطوطة من أصل **{mss_total}** مخطوطة، تعود إلى حوالي **{oldest}–{newest} م**.
 
 أخدم أربعة جمهور:
 • **المؤسسات الثقافية** — تتبع المصدر، والناسخ، والبحث على مستوى المخطوطة.
@@ -330,17 +336,17 @@ _CAPABILITIES_AR = """**NABAT-AI** مساعد بحثي ثنائي اللغة ل�
 
 _CAPABILITIES_EN = """**NABAT-AI** is a bilingual research assistant for the Khaleeji Nabati poetry corpus.
 
-Corpus: **{poems:,}** indexed poems across **{mss_with_toc}** manuscripts (of {mss_total} canonical), c. **{oldest}–{newest} CE**.
+Corpus: **{bayts:,}** indexed bayts across **{mss_with_toc}** manuscripts (of {mss_total} canonical), c. **{oldest}–{newest} CE**.
 
 I serve four audiences:
 - **Cultural Institutions** — provenance, collector, manuscript-level lookups.
-- **Poets & Researchers** — semantic search across verses, dialect resolution, CRAG-graded citations.
+- **Poets & Researchers** — semantic search across bayts, dialect resolution, CRAG-graded citations.
 - **Students & Educators** — guided tours by genre, emotion, era, plus al-Mantuq pronunciation.
 - **General Public** — plain-language answers about the archive.
 
 **Filterable dimensions:** poet · manuscript · page · region · collector · genre · emotion · century
 
-Try: "How many poems by Al-Hazani?" (registry) · "Poems of longing in Najdi" (semantic) · "What was your CRAG verdict?" (instructor)
+Try: "How many bayts by Al-Hazani?" (registry) · "Bayts of longing in Najdi" (semantic) · "What was your CRAG verdict?" (instructor)
 """
 
 
@@ -348,7 +354,7 @@ def _answer_capabilities(state: AgentState) -> AgentState:
     """Return the bilingual capabilities blurb."""
     s = corpus_stats.corpus_summary()
     kwargs = {
-        "poems":       s.get("poems", 0),
+        "bayts":       s.get("bayts", s.get("poems", 0)),
         "mss_with_toc": s.get("manuscripts_with_toc", 0),
         "mss_total":   s.get("manuscripts", 0),
         "oldest":      s.get("oldest_start", "?"),

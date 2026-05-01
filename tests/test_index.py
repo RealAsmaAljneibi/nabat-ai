@@ -112,8 +112,15 @@ class TestBuildChunks:
             for field in required:
                 assert getattr(c, field) is not None, f"{field} missing on {c.chunk_id}"
 
-    def test_empty_registry_returns_empty(self):
-        assert build_chunks([]) == []
+    def test_empty_registry_returns_manuscript_headers(self):
+        # build_chunks intentionally emits one manuscript-level chunk per
+        # registered manuscript even when no verses are provided, so that
+        # queries like "what is the Huber 2 manuscript?" still work.
+        chunks = build_chunks([])
+        ms_chunks = [c for c in chunks if c.level == "manuscript"]
+        assert len(ms_chunks) > 0
+        verse_chunks = [c for c in chunks if c.level == "verse"]
+        assert verse_chunks == []
 
     def test_single_entry_no_group_or_poem(self):
         single = [_make_entry("z00", "شاعر وحيد", "مطلع وحيد")]

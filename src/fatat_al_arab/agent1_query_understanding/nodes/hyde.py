@@ -146,7 +146,17 @@ def hyde_node(state: AgentState) -> AgentState:
         "hyde_passage":   hyde_passage,
         "hyde_embedding": hyde_embedding,
     }
-    return {**state, "query_context": updated_qc}
+    from ...state import trace_append
+    if hyde_passage:
+        preview = hyde_passage[:70] + "…" if len(hyde_passage) > 70 else hyde_passage
+        trace_summary = f'"{preview}"'
+    else:
+        trace_summary = "Skipped (timeout / no passage generated)"
+    return {
+        **state,
+        "query_context": updated_qc,
+        "agent_trace": trace_append(state, stage="2a", icon="🔬", label="HyDE — Hypothetical Verse", summary=trace_summary),
+    }
 
 
 def hyde_passage(query_ar: str) -> dict:

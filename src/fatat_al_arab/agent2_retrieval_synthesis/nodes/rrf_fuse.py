@@ -54,9 +54,14 @@ def _dicts_to_chunks(raw: list[dict]) -> list[ScoredChunk]:
             anchor_id=d.get("anchor_id", ""),
             poet_name=d.get("poet_name", ""),
             source_volume=d.get("source_volume", ""),
-            source_page=int(d.get("source_page", 0)),
+            source_page=str(d.get("source_page", "")),
             source_image_path=d.get("source_image_path", ""),
             manuscript_short_key=d.get("manuscript_short_key", ""),
+            source_type=d.get("source_type", ""),
+            data_tier=d.get("data_tier", ""),
+            is_secondary_source=bool(d.get("is_secondary_source", False)),
+            parent_poem_id=d.get("parent_poem_id", ""),
+            poem_matla=d.get("poem_matla", ""),
         ))
     return chunks
 
@@ -172,4 +177,10 @@ def rrf_fuse_node(state: AgentState) -> AgentState:
         len(bm25_chunks), len(dense_chunks), len(colbert_chunks), len(fused), len(top),
     )
 
-    return {**state, "rrf_top5": [c.to_dict() for c in top]}
+    from fatat_al_arab.state import trace_append
+    trace_summary = f"{len(top)} unique chunks ranked (k={RRF_K}, from {len(fused)} fused)"
+    return {
+        **state,
+        "rrf_top5": [c.to_dict() for c in top],
+        "agent_trace": trace_append(state, stage="5", icon="🔀", label="RRF Fusion", summary=trace_summary),
+    }
