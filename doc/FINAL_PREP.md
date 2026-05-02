@@ -470,6 +470,75 @@ The system is not a demo — it has 468 tests and handles failure at every node.
 
 ---
 
+---
+
+### "The system still seems to have not solved the challenge of digitising poetry in manuscripts — a human is still there. How do you claim your system is solving it?"
+
+This is the most important question to answer well, because it sounds like a flaw but is actually a design principle.
+
+**The short answer:** The challenge was never to remove humans. The challenge was to make digitisation *feasible, scalable, and immediately useful* where before it was impractical. NABAT-AI solves that — with proof at every layer.
+
+---
+
+**Reframe the claim first**
+
+Full automation of Arabic handwritten manuscript transcription at research quality does not exist — not at Google, not at Microsoft, not at any Arabic NLP lab. The British Library Arabic Manuscripts project, the Bibliothèque nationale de France, and the Library of Congress Arabic collections all use human-in-the-loop (HITL) workflows. HITL is not a failure — it is the gold standard in serious manuscript digitisation because the cost of a wrong transcription (a misread bayt, a confused poet attribution) is a permanent error in the scholarly record.
+
+The question is not "is a human present?" — the question is **"how much human effort does it take per manuscript page, and what happens after the text is captured?"**
+
+Before NABAT-AI, the answers were: **many hours per page, and nothing — a static PDF or a locked physical manuscript**.
+
+---
+
+**What the system actually automates — layer by layer**
+
+| Step | Before NABAT-AI | After NABAT-AI | Human role now |
+|---|---|---|---|
+| **Page preparation** | Manual scan assessment, manual deskewing | `operator/triage.py` → `standardise.py` → `bleed_suppress.py` automatically gates, deskews, and removes ghost ink | Reviews operator flags only on DEGRADED pages |
+| **Transcription draft** | A specialist types the full Arabic text by hand | **Kraken v5 HTR** produces a complete draft in seconds per page | Corrects Kraken's errors in eScriptorium (review, not authoring) |
+| **Quality routing** | Expert judgment on every page | `qa_jury.py` routes HIGH-confidence pages to automatic acceptance, ambiguous to jury review, LOW to HITL | Only sees pages the system flagged as uncertain |
+| **Metadata tagging** | Manual research per verse (poet, genre, emotion) | `genre_heuristic.py` auto-tags 83% of 2,222 verses with genre + emotions | Reviews the 17% the heuristic abstained on |
+| **Cross-referencing** | A scholar manually links the same verse appearing in different manuscripts | `cross_link.py` uses fuzzy join (rapidfuzz WRatio) to link Phase 1–3 ↔ Phase 4 automatically | Reviews low-confidence links only |
+| **Search & retrieval** | Reading through a manuscript physically, no cross-corpus search | Bilingual RAG answers any question in Arabic or English in 5–8 seconds with citations | Uses the system — no manual searching required |
+
+The system does not replace the scholar's *judgment* — it replaces the scholar's *labor*. Those are different things.
+
+---
+
+**What "solved" looks like for this domain**
+
+Before this system:
+- 2,222 verse entries across 25 manuscripts existed only in physical or scanned-image form
+- No search was possible — you had to know which manuscript to look in
+- No cross-corpus poet attribution existed
+- A researcher wanting to find all غزل verses across the Ibn Yahya collection would spend days
+
+After this system:
+- Any researcher types "أبيات الغزل في مخطوطات ابن يحيى" and gets cited results in 6 seconds
+- 83% of the corpus has genre + emotion tags that did not exist before
+- 1,982 of 2,222 entries have image-linked folio pages
+- New manuscripts follow a documented 5-step contribution pipeline (Tab B) rather than an ad-hoc researcher process
+- The entire corpus is bilingual-searchable — an English-speaking researcher can query it for the first time
+
+That is what "solving the digitisation challenge" means in practice: **transforming an inaccessible archive into a searchable, citable, extensible knowledge base**.
+
+---
+
+**The honest boundary**
+
+What the system does NOT claim to solve:
+- **Full HTR automation at research quality** — Kraken makes errors on degraded pages, which is why the HITL queue exists. This is a hard open research problem. We use Kraken as a pre-trained tool and do not pretend to have improved it.
+- **Zero human annotation forever** — adding a brand-new manuscript still requires a human to review the Kraken draft. Tab B of the UI documents exactly what that process looks like and how long it takes (~2–4 hours for a 20-page manuscript with eScriptorium's review interface).
+- **Gold genre labels** — the 🔸 badge on all heuristic-tagged results signals explicitly that genre classification is silver-baseline, not peer-reviewed annotation.
+
+**What to say if the panel pushes back:**
+
+> "You're right that a human still reviews the Kraken transcript. But consider the counterfactual: without this system, that human would type the entire manuscript from scratch, with no cross-referencing, no quality gates, no way to search the result. With this system, they correct a draft, and the result is immediately indexed, searchable, cited, and cross-linked to every other manuscript in the corpus. The human effort per verse went from hours to minutes, and the scholarly value went from a static file to a live research tool. That is the digitisation problem being solved — not the fantasy of removing humans from scholarship."
+
+**Code to point at:** `src/al_nassikh/operator/` (quality pipeline) · `src/al_nassikh/ingest/` (HTR ingestion) · `src/al_nassikh/cross_link.py` (automated cross-referencing) · `src/al_nassikh/genre_heuristic.py` (auto-tagging) · `app/streamlit_app.py` Tab B (contributor workflow) · `scripts/ingest_phases_123.py` (PAGE-XML → registry pipeline)
+
+---
+
 ## Quick Reference — Key Files for the Final
 
 | Question topic | Go to |
