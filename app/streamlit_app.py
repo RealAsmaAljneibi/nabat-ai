@@ -810,7 +810,151 @@ def _render_default_view(result: dict) -> None:
             _render_three_layer_cards(al_maktub or "—", orthographic or "—", al_mantuq or "—")
 
     _render_citations(formatted.get("citations") or [])
+    _render_folio_images_for_result(result)
     _render_agent_trace(result)
+
+
+def _render_sidebar_folio_browser() -> None:
+    """
+    Sidebar widget: browse folio images by manuscript or by poet.
+    Two selectboxes; selecting either populates the main folio gallery in session_state.
+    """
+    try:
+        from al_nassikh.folio_gallery import (
+            list_manuscripts_with_images,
+            list_poets_with_images,
+            get_images_for_manuscript,
+            get_images_for_poet,
+        )
+    except ImportError:
+        st.sidebar.caption("folio_gallery unavailable")
+        return
+
+    # ── Browse by Manuscript ──────────────────────────────────────────────────
+    ms_list = list_manuscripts_with_images()
+    ms_options = ["— select —"] + [
+        f"{m['english_name']} ({m['image_count']} pages)" for m in ms_list
+    ]
+    ms_sel = st.sidebar.selectbox(
+        "By manuscript · بالمخطوطة",
+        ms_options,
+        key="folio_ms_sel",
+        label_visibility="collapsed",
+    )
+    if ms_sel and ms_sel != "— select —":
+        idx = ms_options.index(ms_sel) - 1
+        sk  = ms_list[idx]["short_key"]
+        imgs = get_images_for_manuscript(sk)
+        st.session_state["folio_gallery_items"] = {
+            "title": ms_list[idx]["arabic_name"] + " · " + ms_list[idx]["english_name"],
+            "images": [(img.stem, str(img)) for img in imgs],
+        }
+        st.session_state["folio_gallery_open"] = True
+
+    # ── Browse by Poet ────────────────────────────────────────────────────────
+    poets = list_poets_with_images()
+    poet_options = ["— select —"] + poets
+    poet_sel = st.sidebar.selectbox(
+        "By poet · بالشاعر",
+        poet_options,
+        key="folio_poet_sel",
+        label_visibility="collapsed",
+    )
+    if poet_sel and poet_sel != "— select —":
+        poet_imgs = get_images_for_poet(poet_sel)
+        items = []
+        for sk, paths in poet_imgs.items():
+            for p in paths:
+                items.append((f"{p.stem} [{sk}]", str(p)))
+        st.session_state["folio_gallery_items"] = {
+            "title": f"📖 {poet_sel}",
+            "images": items,
+        }
+        st.session_state["folio_gallery_open"] = True
+
+
+def _render_folio_gallery_panel() -> None:
+    """
+    Full-width panel rendered in the Scholar Workbench main area when the user
+    picks a manuscript or poet from the sidebar folio browser.
+    """
+    gallery = st.session_state.get("folio_gallery_items")
+    if not gallery or not st.session_state.get("folio_gallery_open"):
+        return
+
+    images = gallery.get("images") or []
+    title  = gallery.get("title", "Folio Gallery")
+
+    with st.expander(f"🖼️ {title} — {len(images)} page(s)", expanded=True):
+        if st.button("✕ Close gallery", key="close_folio_gallery"):
+            st.session_state["folio_gallery_open"] = False
+            st.rerun()
+        cols_per_row = 3
+        for row_start in range(0, len(images), cols_per_row):
+            row = images[row_start: row_start + cols_per_row]
+            cols = st.columns(cols_per_row)
+            for col, (caption, img_path) in zip(cols, row):
+                with col:
+                    try:
+                        st.image(img_path, caption=caption, use_container_width=True)
+                    except Exception:
+                        st.caption(f"⚠️ {Path(img_path).name}")
+
+
+def _render_folio_images_for_result(result: dict) -> None:
+    """
+    Why this exists: show the actual manuscript page images for every cited
+    passage so users can see the handwritten source, not just the transcription.
+    Uses resolve_citation_image() from folio_gallery to map anchor image paths
+    to real files on disk.
+    """
+    try:
+        from al_nassikh.folio_gallery import resolve_citation_image
+    except ImportError:
+        return
+
+    formatted  = result.get("formatted_response") or {}
+    citations  = formatted.get("citations") or []
+    passages   = result.get("resolved_passages") or []
+
+    # Collect (label, image_path) pairs from both citations and resolved_passages
+    image_items: list[tuple[str, str]] = []
+    seen_names: set[str] = set()
+
+    for cit in citations:
+        img_raw = cit.get("image") or cit.get("source_image_path") or ""
+        if not img_raw:
+            continue
+        resolved = resolve_citation_image(img_raw)
+        if resolved and resolved.name not in seen_names:
+            label = f"{cit.get('poet', '')} — {cit.get('manuscript', '')} p.{cit.get('page', '')}".strip(" —")
+            image_items.append((label, str(resolved)))
+            seen_names.add(resolved.name)
+
+    for passage in passages:
+        img_raw = passage.get("source_image_path") or ""
+        if not img_raw:
+            continue
+        resolved = resolve_citation_image(img_raw)
+        if resolved and resolved.name not in seen_names:
+            label = f"{passage.get('poet_name', '')} — p.{passage.get('source_page', '')}".strip(" —")
+            image_items.append((label, str(resolved)))
+            seen_names.add(resolved.name)
+
+    if not image_items:
+        return
+
+    with st.expander(f"🖼️ Folio Images ({len(image_items)}) / صور المخطوطات", expanded=False):
+        cols_per_row = min(3, len(image_items))
+        for row_start in range(0, len(image_items), cols_per_row):
+            row_items = image_items[row_start: row_start + cols_per_row]
+            cols = st.columns(cols_per_row)
+            for col, (label, img_path) in zip(cols, row_items):
+                with col:
+                    try:
+                        st.image(img_path, caption=label, use_container_width=True)
+                    except Exception:
+                        st.caption(f"⚠️ Image unavailable: {Path(img_path).name}")
 
 
 def _render_philology_view(result: dict) -> None:
@@ -1121,6 +1265,9 @@ def _render_workbench() -> None:
         '</div>',
         unsafe_allow_html=True,
     )
+
+    # ── Folio gallery (shown when user picks from sidebar browser) ────────────
+    _render_folio_gallery_panel()
 
     # ── Recipe cards — quick-start prompts for the demo panel ─────────────────
     _render_recipe_cards()
@@ -2249,6 +2396,11 @@ div[data-testid="stSidebarContent"] .tab-nav-btn.inactive button:hover {
   </div>
 </div>
 """, unsafe_allow_html=True)
+
+    # ── Folio Browse ──────────────────────────────────────────────────────────
+    st.sidebar.markdown('<div class="s-divider" style="margin:3px 0"></div>', unsafe_allow_html=True)
+    st.sidebar.markdown('<div class="s-label">🖼️ Browse Folios / تصفح المخطوطات</div>', unsafe_allow_html=True)
+    _render_sidebar_folio_browser()
 
     st.sidebar.markdown(
         '<div class="footer-note">Where poetry once lost to the wind<br/>is given form again</div>',
