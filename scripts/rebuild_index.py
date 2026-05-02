@@ -20,6 +20,7 @@ counts per level and the embedding matrix shape.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import time
 from pathlib import Path
@@ -34,6 +35,8 @@ from fatat_al_arab.index import (
     DEFAULT_QDRANT,
     build_index,
 )
+
+_ONLINE_CORPUS = _REPO / "data" / "online_corpus" / "online_anchor_registry.json"
 
 
 def main() -> None:
@@ -70,6 +73,16 @@ def main() -> None:
         print(f"ERROR: Registry file not found: {registry_path}", file=sys.stderr)
         sys.exit(1)
 
+    # Auto-merge online corpus if present
+    extra_entries: list[dict] = []
+    if _ONLINE_CORPUS.exists():
+        with open(_ONLINE_CORPUS, encoding="utf-8") as fh:
+            extra_entries = json.load(fh)
+        print(f"Online corpus : {_ONLINE_CORPUS} ({len(extra_entries)} entries)")
+    else:
+        print(f"Online corpus : not found — run scripts/ingest_online.py to populate")
+        print(f"                ({_ONLINE_CORPUS})")
+
     print(f"Registry : {registry_path}")
     print(f"Qdrant   : {qdrant_path}")
     print(f"Force    : {args.force}")
@@ -81,6 +94,7 @@ def main() -> None:
         qdrant_path=qdrant_path,
         force_rebuild=args.force,
         batch_size=args.batch_size,
+        extra_entries=extra_entries or None,
     )
     elapsed = time.perf_counter() - t0
 
@@ -96,6 +110,9 @@ def main() -> None:
     print(f"  {'era (حقبة)':<26} {s.get('era_chunks', 0):>8}")
     print(f"  {'genre (نوع)':<26} {s.get('genre_chunks', 0):>8}")
     print(f"  {'emotion (مشاعر)':<26} {s.get('emotion_chunks', 0):>8}")
+    print(f"  {'reference (مراجع)':<26} {s.get('reference_chunks', 0):>8}")
+    if extra_entries:
+        print(f"  (online corpus merged: {len(extra_entries)} entries → absorbed into verse/group/poem above)")
     print(f"{'Embedding shape':<28} {str(s['embedding_shape']):>8}")
     if s.get("loaded_from_cache"):
         print("  (loaded from cache — use --force to re-encode)")

@@ -39,6 +39,15 @@ RRF_K         = 60      # RRF damping constant (Cormack et al. 2009)
 TOP_N_FUSED   = 20      # top results to carry forward to Stage 6
 SOFT_BOOST    = 1.5     # multiplicative score boost when soft filter matches
 
+# Source-tier weights applied after fusion.
+# Why: reference corpus (scholarly PDFs) and MAAI7103 oral bayts score highly
+# on BM25/dense for thematic queries but should not outrank primary manuscript
+# verse content. These multipliers ensure primary manuscripts always rank first
+# unless the corpus genuinely has no relevant content.
+SOURCE_WEIGHT_REFERENCE  = 0.35  # scholarly PDFs — context only, not primary verse
+SOURCE_WEIGHT_SECONDARY  = 0.65  # MAAI7103 oral / online secondary sources
+SOURCE_WEIGHT_PRIMARY    = 1.0   # primary manuscripts — no change
+
 
 def _dicts_to_chunks(raw: list[dict]) -> list[ScoredChunk]:
     """Reconstruct ScoredChunk objects from the serialised AgentState dicts."""
@@ -108,6 +117,63 @@ def _apply_soft_boost(
     return sorted(boosted, key=lambda c: (-c.rrf_score, c.chunk_id))
 
 
+def _apply_source_weights(chunks: list[ScoredChunk]) -> list[ScoredChunk]:
+    """
+    Downweight reference corpus and secondary-source chunks after RRF fusion.
+
+    Why: reference PDFs (reference_*) and MAAI7103 oral bayts achieve high BM25
+    and dense scores on thematic queries because they share Nabati vocabulary, but
+    they should not crowd out primary manuscript verse chunks which are what the
+    scholar actually wants. The multipliers ensure primary content always ranks
+    first; secondary/reference content only surfaces when primary corpus has
+    no relevant match.
+
+    Detected by chunk_id prefix because is_secondary_source and source_type
+    are not reliably populated in the current index (index rebuild needed).
+    This function is safe to run even after rebuild — prefix detection is
+    redundant once the flags are correct, but still correct.
+    """
+    weighted = []
+    for c in chunks:
+        cid = c.chunk_id
+        if cid.startswith("reference_") or c.level == "reference":
+            w = SOURCE_WEIGHT_REFERENCE
+        elif (
+            cid.startswith("maai7103_")
+            or cid.startswith("aldiwan_")
+            or cid.startswith("4byt_")
+            or cid.startswith("ecssr_")
+            or c.is_secondary_source
+            or c.source_type in ("oral", "online", "secondary", "online_digitized")
+        ):
+            w = SOURCE_WEIGHT_SECONDARY
+        else:
+            w = SOURCE_WEIGHT_PRIMARY
+
+        if w == 1.0:
+            weighted.append(c)
+        else:
+            weighted.append(ScoredChunk(
+                chunk_id=c.chunk_id,
+                rrf_score=c.rrf_score * w,
+                text=c.text,
+                level=c.level,
+                anchor_id=c.anchor_id,
+                poet_name=c.poet_name,
+                source_volume=c.source_volume,
+                source_page=c.source_page,
+                source_image_path=c.source_image_path,
+                manuscript_short_key=c.manuscript_short_key,
+                source_type=c.source_type,
+                data_tier=c.data_tier,
+                is_secondary_source=c.is_secondary_source,
+                parent_poem_id=c.parent_poem_id,
+                poem_matla=c.poem_matla,
+                extra=c.extra,
+            ))
+    return sorted(weighted, key=lambda c: (-c.rrf_score, c.chunk_id))
+
+
 def _dedup_by_anchor(
     chunks: list[ScoredChunk],
     keep_all_levels: bool = False,
@@ -164,6 +230,10 @@ def rrf_fuse_node(state: AgentState) -> AgentState:
     # Soft filter boost
     if filters_soft:
         fused = _apply_soft_boost(fused, filters_soft)
+
+    # Source-tier downweighting: reference PDFs and secondary oral/online sources
+    # must not outrank primary manuscript verse content
+    fused = _apply_source_weights(fused)
 
     # De-duplicate across chunk levels (keep all for interpretive queries)
     keep_all = (detected_intent == "interpretive")

@@ -371,6 +371,9 @@ def build_chunks(registry: list[dict]) -> list[ScoredChunk]:
             manuscript_short_key=p["manuscript_short_key"],
             genre=p["genre"], genre_confidence=p["genre_confidence"],
             genre_source=p["genre_source"], emotions=p["emotions"],
+            source_type=p["source_type"], data_tier=p["data_tier"],
+            is_secondary_source=p["is_secondary_source"],
+            parent_poem_id=p["parent_poem_id"], poem_matla=p["poem_matla"],
         ))
         seq_counter += 1
 
@@ -396,6 +399,9 @@ def build_chunks(registry: list[dict]) -> list[ScoredChunk]:
                 manuscript_short_key=p["manuscript_short_key"],
                 genre=p["genre"], genre_confidence=p["genre_confidence"],
                 genre_source=p["genre_source"], emotions=p["emotions"],
+                source_type=p["source_type"], data_tier=p["data_tier"],
+                is_secondary_source=p["is_secondary_source"],
+                parent_poem_id=p["parent_poem_id"], poem_matla=p["poem_matla"],
             ))
             seq_counter += 1
 
@@ -416,6 +422,9 @@ def build_chunks(registry: list[dict]) -> list[ScoredChunk]:
             manuscript_short_key=p["manuscript_short_key"],
             genre=p["genre"], genre_confidence=p["genre_confidence"],
             genre_source=p["genre_source"], emotions=p["emotions"],
+            source_type=p["source_type"], data_tier=p["data_tier"],
+            is_secondary_source=p["is_secondary_source"],
+            parent_poem_id=p["parent_poem_id"], poem_matla=p["poem_matla"],
         ))
         seq_counter += 1
 
@@ -706,21 +715,26 @@ class IndexBundle:
 # ── Build & load ──────────────────────────────────────────────────────────────
 
 def build_index(
-    registry_path: str | Path = DEFAULT_REGISTRY,
-    qdrant_path:   str | Path = DEFAULT_QDRANT,
-    force_rebuild: bool = False,
-    batch_size:    int  = 32,
+    registry_path:  str | Path = DEFAULT_REGISTRY,
+    qdrant_path:    str | Path = DEFAULT_QDRANT,
+    force_rebuild:  bool = False,
+    batch_size:     int  = 32,
+    extra_entries:  list[dict] | None = None,
 ) -> IndexBundle:
     """
     Build the file-backed Qdrant index from anchor_registry_phase4.json.
 
     Steps:
-      1. Load registry JSON
+      1. Load registry JSON (+ merge extra_entries if provided)
       2. Explode into 3-level chunks
       3. Encode with AraBERT (batch)
       4. Persist chunks metadata + embeddings to qdrant_path
       5. (Optionally) upsert into Qdrant collection for ANN queries
       6. Return IndexBundle
+
+    extra_entries: optional list of anchor-registry dicts to merge in before
+    chunking — used by rebuild_index.py to include online corpus entries
+    without requiring a separate index build pass.
 
     If qdrant_path/chunks_meta.json already exists and force_rebuild=False,
     load_index() is called instead (fast path).
@@ -733,9 +747,15 @@ def build_index(
     if meta_file.exists() and emb_file.exists() and not force_rebuild:
         return load_index(qdrant_path)
 
-    # Step 1: load registry
+    # Step 1: load registry (+ optional online/secondary corpus merge)
     with open(registry_path, encoding="utf-8") as f:
         registry: list[dict] = json.load(f)
+    if extra_entries:
+        existing_ids = {e.get("anchor_id") for e in registry}
+        new_entries  = [e for e in extra_entries if e.get("anchor_id") not in existing_ids]
+        registry     = registry + new_entries
+        import logging as _log
+        _log.getLogger(__name__).info("build_index: merged %d extra entries (total: %d)", len(new_entries), len(registry))
 
     # Step 2: chunk
     chunks = build_chunks(registry)
