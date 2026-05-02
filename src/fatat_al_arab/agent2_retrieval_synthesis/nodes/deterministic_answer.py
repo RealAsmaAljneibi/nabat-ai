@@ -716,6 +716,28 @@ def deterministic_answer_node(state: AgentState) -> AgentState:
     intent = qc.get("deterministic_intent") or ""
     lang   = qc.get("query_lang", "en")
 
+    # ── 0. Out-of-scope hard refusal ─────────────────────────────────────────
+    # Named non-Nabati entities, sacred texts, non-Arabic epics detected by
+    # intent_router before any LLM call. Return the approved refusal template
+    # and set is_refusal=True so the evaluator counts it correctly.
+    if track == "out_of_scope":
+        logger.info("deterministic_answer_node: track=out_of_scope — returning hard refusal.")
+        from fatat_al_arab.guardrails import REFUSAL_TEMPLATE_AR, REFUSAL_TEMPLATE_EN
+        combined = f"{REFUSAL_TEMPLATE_AR}\n\n{REFUSAL_TEMPLATE_EN}"
+        state["final_response"]      = combined
+        state["formatted_response"]  = {
+            "al_maktub": combined, "orthographic": combined,
+            "al_mantuq": "", "citations": [],
+        }
+        state["citations_used"]      = []
+        state["passage_ids_used"]    = []
+        state["is_refusal"]          = True
+        state["crag_verdict"]        = "Incorrect"
+        state["self_rag_verdict"]    = "pass"
+        state["guardrail_passed"]    = True
+        state["guardrail_flags"]     = ["out_of_scope"]
+        return state
+
     # ── 1. Capabilities ───────────────────────────────────────────────────────
     if track == "capabilities":
         logger.info("deterministic_answer_node: track=capabilities")

@@ -188,14 +188,19 @@ def evaluate_correctness(
     )
 
     # Recall@5 — does any gold anchor_id appear in the top-5 RRF-fused chunks?
-    # Why this metric (not citations_used): Recall@5 must measure RETRIEVAL quality.
-    # The synthesiser may cite only 1-2 of the 5 retrieved passages, so measuring on
-    # citations_used conflates retrieval quality with generation behaviour and
-    # mechanically caps the metric near 1/5. The fused top-5 is what retrieval
-    # actually surfaced — the right unit for a Recall@5 number.
-    # Fallback to citations_used kept for legacy state shapes.
-    recall_hits = 0
-    recall_total = 0
+    # Two variants are reported:
+    #   exact:   gold anchor_id == retrieved anchor_id (strict — page + row match)
+    #   relaxed: gold and retrieved share the same manuscript prefix (e.g. "manuscript06")
+    #            A relaxed hit means the system retrieved from the RIGHT manuscript
+    #            but possibly a different page. Honest about retrieval granularity.
+    def _ms_prefix(aid: str) -> str:
+        """manuscript06_p255_r033c0 → 'manuscript06'; fallback to full id."""
+        idx = aid.find("_p")
+        return aid[:idx] if idx > 0 else aid.split("_")[0] if "_" in aid else aid
+
+    recall_hits         = 0   # exact match
+    relaxed_recall_hits = 0   # manuscript-level match
+    recall_total        = 0
     for (fix, result, _) in scholar_results:
         gold = fix.get("gold_anchor_ids") or []
         if not gold:
@@ -219,9 +224,19 @@ def evaluate_correctness(
         for cit in (result.get("formatted_response") or {}).get("citations") or []:
             retrieved_anchors.add(cit.get("anchor_id", ""))
 
-        if any(g in retrieved_anchors for g in gold):
+        exact_hit = any(g in retrieved_anchors for g in gold)
+        if exact_hit:
             recall_hits += 1
-    recall_at_5 = recall_hits / recall_total if recall_total else 0.0
+            relaxed_recall_hits += 1
+        else:
+            # Relaxed: at least one retrieved chunk from the same manuscript
+            gold_ms   = {_ms_prefix(g) for g in gold}
+            retr_ms   = {_ms_prefix(a) for a in retrieved_anchors if a}
+            if gold_ms & retr_ms:
+                relaxed_recall_hits += 1
+
+    recall_at_5         = recall_hits         / recall_total if recall_total else 0.0
+    relaxed_recall_at_5 = relaxed_recall_hits / recall_total if recall_total else 0.0
 
     # Refusal precision on OOC set (target ≥ 0.90)
     ooc_refusals = sum(1 for (_, r, _) in ooc_results if r.get("is_refusal"))
@@ -255,6 +270,7 @@ def evaluate_correctness(
         "citation_resolvability_rate":   round(cit_resolvable_rate, 4),
         "citation_resolvability_target":  1.00,
         "recall_at_5":                    round(recall_at_5, 4),
+        "recall_at_5_relaxed":            round(relaxed_recall_at_5, 4),
         "recall_at_5_target":             0.75,
         "refusal_precision_ooc":          round(refusal_precision, 4),
         "refusal_precision_target":       0.90,
@@ -524,7 +540,8 @@ def render_report(
 | Metric | Result | Target | Status |
 |---|---|---|---|
 | Citation-resolvability rate | {_pct(c.get('citation_resolvability_rate', 0))} | 100% | {_flag(cit_ok)} |
-| Recall@5 (in-corpus, gold anchors) | {_pct(c.get('recall_at_5', 0))} | ≥ 75% | {_flag(rec_ok)} |
+| Recall@5 exact (gold anchor_id match) | {_pct(c.get('recall_at_5', 0))} | ≥ 75% | {_flag(rec_ok)} |
+| Recall@5 relaxed (correct manuscript) | {_pct(c.get('recall_at_5_relaxed', 0))} | ≥ 75% | {_flag(c.get('recall_at_5_relaxed',0) >= 0.75)} |
 | Refusal precision (OOC set, n={c.get('ooc_total',0)}) | {_pct(c.get('refusal_precision_ooc', 0))} | ≥ 90% | {_flag(ref_ok)} |
 
 **CRAG verdict distribution** (in-corpus queries):
@@ -533,10 +550,10 @@ def render_report(
 |---|---|
 {chr(10).join(f"| {k} | {v} |" for k, v in (c.get("crag_verdict_distribution") or {}).items()) or "| *(no data)* | — |"}
 
-> Recall@5 is measured as: at least one gold anchor_id from the fixture appears
-> in the response's citations_used list. This is a conservative lower bound —
-> the stub LLM always returns the refusal template so cited anchors are empty;
-> in live mode this number reflects true retrieval quality.
+> **Recall@5 exact**: at least one gold anchor_id (exact page+row) appears in the top-20 retrieved chunks.
+> **Recall@5 relaxed**: at least one retrieved chunk is from the correct manuscript (same anchor_id prefix).
+> The exact metric measures page-level precision; the relaxed metric confirms the retriever found the right manuscript.
+> Low exact / high relaxed = the retriever targets the right manuscript but ranks adjacent verses higher than the specific gold page.
 
 ---
 
@@ -615,7 +632,7 @@ def render_report(
 | Architecture claim | Result | Honest verdict |
 |---|---|---|
 | Citation-resolvability 100% (§2.9 guardrail a) | {_pct(c.get('citation_resolvability_rate', 0))} | {"✅ Met in stub mode — live test pending" if cit_ok else "⚠️ Below target — review guardrail_passed logic"} |
-| Recall@5 ≥ 75% (§5 scholar set) | {_pct(c.get('recall_at_5', 0))} | {"✅ Met" if rec_ok else "⚠️ Below target in stub mode (expected — stub cites nothing). Run with live API for real measure."} |
+| Recall@5 exact ≥ 75% (§5 scholar set) | {_pct(c.get('recall_at_5', 0))} | {"✅ Met" if rec_ok else f"⚠️ Below target — relaxed (manuscript-level) = {_pct(c.get('recall_at_5_relaxed',0))}"} |
 | Refusal precision ≥ 90% (§2.9 guardrail c) | {_pct(c.get('refusal_precision_ooc', 0))} | {"✅ Met" if ref_ok else "⚠️ Below target — check OOC query routing"} |
 | p50 < 4 s (§7 efficiency) | {_ms(e.get('p50_ms', 0))} | {"✅ Met in stub" if p50_ok else "⚠️ Stub latency above 4 s — unexpected, check overhead"} |
 | p95 < 8 s (§7 efficiency) | {_ms(e.get('p95_ms', 0))} | {"✅ Met in stub" if p95_ok else "⚠️ Check p95 with live API"} |
@@ -750,7 +767,8 @@ def main() -> None:
     print("\n── Quick summary ────────────────────────────────────────────────")
     c, r_ax, e_ax = correctness, robustness, efficiency
     print(f"  Citation-resolvability:  {_pct(c.get('citation_resolvability_rate',0))}  (target 100%)")
-    print(f"  Recall@5 (scholar set):  {_pct(c.get('recall_at_5',0))}  (target ≥75%)")
+    print(f"  Recall@5 exact:          {_pct(c.get('recall_at_5',0))}  (target ≥75%)")
+    print(f"  Recall@5 relaxed (MS):   {_pct(c.get('recall_at_5_relaxed',0))}  (correct manuscript retrieved)")
     print(f"  Refusal precision (OOC): {_pct(c.get('refusal_precision_ooc',0))}  (target ≥90%)")
     ref_active = c.get('reference_hit_rate_active', 0)
     ref_total  = c.get('reference_hit_rate_total',  0)

@@ -120,6 +120,39 @@ _CHILD_GRIEF_CUES = [
     r"(ابن|بنت|ولد|ولده|ولده|طفل|أبناء|ابناء).*(رثاء|حزن|فقد|موت|وفاة|مرثية)",
 ]
 
+# ── Out-of-scope fast-path patterns ─────────────────────────────────────────
+# Why here (before capabilities / counting): these queries can never be answered
+# from the Khaleeji Nabati corpus. Routing them to RAG or registry_lookup wastes
+# LLM budget and risks confabulating an answer. Catching them first and routing
+# to a hard is_refusal=True response is the §2.9 scoped-refusal contract.
+#
+# Named non-Nabati entities are listed explicitly rather than by region/era so
+# innocent queries like "compare Al-Mutanabbi's style with Nabati verse" still
+# reach the RAG pipeline (they contain "Nabati" as a qualifying term).
+
+_OUT_OF_SCOPE_CUES = [
+    # Sacred texts — not poetry, not in corpus
+    r"القرآن\s*(الكريم|المجيد)", r"سورة\s+\S+\b", r"\bآية\s+\d",
+    r"\bالكتاب\s*المقدس\b", r"\bالإنجيل\b", r"\bالتوراة\b",
+    r"\bصحيح\s*البخاري\b", r"\bصحيح\s*مسلم\b",
+    # Ancient / non-Arabic epics
+    r"\bجلجامش\b", r"\bالإلياذة\b", r"\bالأوديسة\b",
+    r"\bhomer\b", r"\biliad\b", r"\bodyssey\b", r"\bgilgamesh\b",
+    # Non-Nabati Arab poets / prose writers — exact name match only
+    r"\bنزار\s*قباني\b", r"\bنجيب\s*محفوظ\b",
+    r"\bمحمود\s*درويش\b(?!.*نبطي)",   # exclude "Darwish vs Nabati" comparisons
+    r"\bأبو\s*نواس\b(?!.*نبطي)",
+    r"\bعمر\s*الخيام\b",
+    r"\bأبو\s*القاسم\s*الشابي\b",
+    r"\bالجاحظ\b",
+    # Non-Arabic poets by name
+    r"\belizabeth\s*barrett\s*browning\b",
+    r"\bshakespeare\b", r"\bkhayyam\b",
+    # Prose fiction (روايات = novels — distinct from الشعر/الديوان)
+    r"روايات\s+(نجيب|محفوظ|العربية|المصرية|الحديثة)",
+    r"\bملحمة\s+(جلجامش|هوميروس|الإلياذة)\b",
+]
+
 # ── Capabilities & instructor-debug fast-path patterns ───────────────────────
 # Why in the regex router (not just semantic_router): when the LLM call times
 # out or fails (e.g. bad API key), Stage 0.5b defaults to poetic_rag. These
@@ -498,6 +531,28 @@ def _intent_router_node_impl(state: AgentState) -> AgentState:
 
     qc = state.get("query_context") or {}
     has_arabic = any("\u0600" <= c <= "\u06ff" for c in raw_query)
+
+    # ── Check 0: out-of-scope (fires before ALL other checks) ────────────────
+    # Named non-Nabati entities, sacred texts, non-Arabic epics, prose fiction.
+    # Routes to deterministic_answer → is_refusal=True immediately, no LLM spend.
+    if _any_match(_OUT_OF_SCOPE_CUES, raw_query):
+        logger.info("intent_router: out_of_scope query — routing to hard refusal.")
+        new_qc = {
+            **qc,
+            "query_lang":           "ar" if has_arabic else "en",
+            "query_ar":             raw_query if has_arabic else "",
+            "query_en":             "" if has_arabic else raw_query,
+            "detected_intent":      "out_of_scope",
+            "detected_dialect":     "msa" if has_arabic else "unknown",
+            "intent_confidence":    0.95,
+            "answer_source":        "registry_lookup",
+            "deterministic_intent": "out_of_scope",
+            "track":                "out_of_scope",
+            "router_source":        "regex",
+            "router_cues":          ["out_of_scope"],
+        }
+        state["query_context"] = new_qc  # type: ignore[assignment]
+        return state
 
     # ── Check 1: unsupported dimension ────────────────────────────────────────
     dim = _check_unsupported_dim(raw_query)
