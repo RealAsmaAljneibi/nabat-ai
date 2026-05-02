@@ -505,6 +505,102 @@ def fetch_ecssr_poems(max_poems: int = 100) -> list[dict]:
     return entries
 
 
+# ── Bayt splitting ───────────────────────────────────────────────────────────
+
+_MIN_HEMISTICH_LEN = 18   # chars — classical sadr/ajuz rarely shorter than this
+
+def _is_classical_structure(lines: list[str]) -> bool:
+    """
+    Heuristic: returns True if the poem looks like classical Nabati bayts
+    (paired sadr+ajuz lines) rather than free verse.
+
+    Why: aldiwan.net hosts both classical Nabati and modern free verse.
+    Free verse has highly irregular, often very short lines; classical bayts
+    have sadr and ajuz of roughly equal and substantial length.
+    We split only classical poems to avoid mangling free-verse structure.
+
+    Checks:
+      1. Even number of content lines (≥ 4)
+      2. Average line length ≥ _MIN_HEMISTICH_LEN (free verse lines are short)
+      3. Sadr/ajuz length ratio between 0.35 and 2.8 (hemistichs balanced)
+    """
+    if len(lines) < 2:
+        return False
+    # Filter separator tokens (*, -, short punctuation)
+    content = [l for l in lines if len(l.strip()) > 5]
+    if len(content) < 4:
+        return False
+    # Even line count required
+    if len(content) % 2 != 0:
+        return False
+    # Average line must be long enough to be a real hemistich
+    avg_len = sum(len(l) for l in content) / len(content)
+    if avg_len < _MIN_HEMISTICH_LEN:
+        return False
+    # Sadr and ajuz should have similar lengths
+    sadrs = [len(content[i]) for i in range(0, len(content), 2)]
+    ajuze = [len(content[i]) for i in range(1, len(content), 2)]
+    avg_s = sum(sadrs) / len(sadrs)
+    avg_a = sum(ajuze) / len(ajuze)
+    if avg_s == 0 or avg_a == 0:
+        return False
+    ratio = avg_s / avg_a
+    return 0.35 <= ratio <= 2.8
+
+
+def _split_to_bayts(entry: dict) -> list[dict]:
+    """
+    Split a multi-bayt poem entry into individual bayt entries.
+
+    Each returned entry has:
+      anchor_id     = {parent_anchor_id}_b{n:02d}
+      text          = "{sadr}\n{ajuz}"  (two lines)
+      parent_poem_id= original anchor_id
+      poem_matla    = text of the first bayt (lines 0+1)
+
+    Non-classical entries (free verse, single line) are returned unchanged.
+    Poems with only 2 lines are already a single bayt — returned as-is with
+    parent_poem_id set to their own anchor_id (self-referential; standard).
+    """
+    raw   = entry.get("text", "").strip()
+    lines = [l for l in raw.splitlines() if len(l.strip()) > 3]
+
+    # Single bayt already — just annotate and return
+    if len(lines) <= 2:
+        e = dict(entry)
+        e["parent_poem_id"] = entry["anchor_id"]
+        e["poem_matla"]     = raw
+        return [e]
+
+    # Free verse — keep as-is (no splitting)
+    if not _is_classical_structure(lines):
+        e = dict(entry)
+        e["parent_poem_id"] = entry["anchor_id"]
+        e["poem_matla"]     = "\n".join(lines[:2]) if len(lines) >= 2 else raw
+        return [e]
+
+    # Classical: pair lines into sadr+ajuz bayts
+    parent_id = entry["anchor_id"]
+    matla     = f"{lines[0]}\n{lines[1]}"
+    bayts     = []
+    for n, i in enumerate(range(0, len(lines) - 1, 2), start=1):
+        sadr = lines[i]
+        ajuz = lines[i + 1]
+        bayt_text = f"{sadr}\n{ajuz}"
+        b = dict(entry)
+        b["anchor_id"]      = f"{parent_id}_b{n:02d}"
+        b["text"]           = bayt_text
+        b["parent_poem_id"] = parent_id
+        b["poem_matla"]     = matla
+        b["source_page"]    = f"{entry.get('source_page', parent_id)}_b{n:02d}"
+        bayts.append(b)
+
+    logger.debug(
+        f"_split_to_bayts: {parent_id} → {len(bayts)} bayts"
+    )
+    return bayts
+
+
 # ── Genre enrichment (post-fetch) ────────────────────────────────────────────
 
 def _enrich_genre(entries: list[dict]) -> list[dict]:
@@ -561,14 +657,22 @@ def ingest_online_corpus(
         logger.info("=== Fetching ECSSR UAE poetry (best-effort) ===")
         all_entries.extend(fetch_ecssr_poems())
 
+    # Split multi-bayt poems into individual bayt entries with parent linkage
+    split_entries: list[dict] = []
+    for e in all_entries:
+        split_entries.extend(_split_to_bayts(e))
+    logger.info(
+        f"Bayt split: {len(all_entries)} poems → {len(split_entries)} bayts"
+    )
+
     # Deduplicate by anchor_id
     seen_ids: set[str] = set()
     unique: list[dict] = []
-    for e in all_entries:
+    for e in split_entries:
         if e["anchor_id"] not in seen_ids:
             seen_ids.add(e["anchor_id"])
             unique.append(e)
-    logger.info(f"Deduplication: {len(all_entries)} → {len(unique)} entries")
+    logger.info(f"Deduplication: {len(split_entries)} → {len(unique)} entries")
 
     # Genre enrichment
     unique = _enrich_genre(unique)
@@ -580,10 +684,10 @@ def ingest_online_corpus(
     )
     logger.info(
         f"Online corpus written → {output_path}\n"
-        f"  aldiwan.net:   {sum(1 for e in unique if e['source_site']=='aldiwan.net')}\n"
-        f"  4byt.com:      {sum(1 for e in unique if e['source_site']=='4byt.com')}\n"
-        f"  ecssr:         {sum(1 for e in unique if e['source_site']=='uaell.ecssr.ae')}\n"
-        f"  Total:         {len(unique)}"
+        f"  aldiwan.net:   {sum(1 for e in unique if e['source_site']=='aldiwan.net')} bayts\n"
+        f"  4byt.com:      {sum(1 for e in unique if e['source_site']=='4byt.com')} bayts\n"
+        f"  ecssr:         {sum(1 for e in unique if e['source_site']=='uaell.ecssr.ae')} bayts\n"
+        f"  Total:         {len(unique)} bayts"
     )
     return unique
 
