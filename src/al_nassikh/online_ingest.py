@@ -24,9 +24,12 @@ Three sources supported (all publicly accessible Arabic poetry sites):
     Poet embedded in text as (poet name) at end of verse block.
     URL pattern: https://4byt.com/byt/{ID}
 
-  SOURCE 3 — uaell.ecssr.ae  (best-effort; JS-rendered, limited access)
-    UAE Leadership Encyclopedia poetry — fetched if accessible.
-    URL pattern: https://uaell.ecssr.ae/products/poems/{ID}
+  SOURCE 3 — uaell.ecssr.ae  (Playwright required — Angular SPA)
+    UAE Leadership Encyclopedia — 685 poems by UAE rulers and leaders
+    (Sheikh Zayed, MBZ, MBR, etc.). Uses Playwright to render the page,
+    intercepts the REST API (GetPublishedProductsByTypeId typeId=8),
+    then paginates via in-browser fetch calls.
+    Requires: pip install playwright && playwright install chromium
 
 Output: data/online_corpus/online_anchor_registry.json
 Format: same anchor_registry schema as the manuscript corpus.
@@ -352,39 +355,142 @@ def fetch_4byt_nabati(pages: int = 5) -> list[dict]:
 
 # ── Source 3: uaell.ecssr.ae (best-effort, JS-rendered) ──────────────────────
 
-def fetch_ecssr_poems(max_id: int = 30) -> list[dict]:
+_ECSSR_POEMS_URL  = "https://uaell.ecssr.ae/products/poems/8"
+_ECSSR_API_BASE   = "https://uaellapi.ecssr.ae/controller/Authorized"
+_ECSSR_TYPE_ID    = 8   # productTypeId for قصائد (poems) — confirmed from network intercept
+_ECSSR_FILTER     = {"categoryId": -1, "tag": "", "content": "", "characterId": -1, "tags": [], "subCategoryId": -1}
+_ECSSR_PAGE_SIZE  = 20  # items per API page
+
+
+def _strip_html(html_text: str) -> str:
+    """Strip HTML tags and normalise whitespace from productName field."""
+    if not html_text:
+        return ""
+    # Remove tags
+    clean = re.sub(r"<[^>]+>", "\n", html_text)
+    # Decode common HTML entities
+    clean = clean.replace("&nbsp;", " ").replace("&amp;", "&").replace(
+        "&lt;", "<").replace("&gt;", ">").replace("&#160;", " ")
+    lines = [l.strip() for l in clean.splitlines() if l.strip()]
+    return "\n".join(lines)
+
+
+def fetch_ecssr_poems(max_poems: int = 100) -> list[dict]:
     """
-    Best-effort fetch from UAE Leadership Encyclopedia poetry section.
-    Pages are JS-rendered; plain HTTP fetch captures what is available.
+    Fetch UAE Leadership Encyclopedia poetry via Playwright + API interception.
+
+    Why Playwright: uaell.ecssr.ae is an Angular SPA — plain HTTP returns only
+    the bare HTML shell; all poem content loads via JS calling
+    uaellapi.ecssr.ae/controller/Authorized/GetPublishedProductsByTypeId.
+    Playwright renders the first page to establish session + CSRF token, then
+    we paginate via page.evaluate() fetch calls from inside the browser context.
+
+    max_poems: cap on entries fetched (default 100 — covers the most recent
+    leadership poems without a multi-minute crawl).
     """
-    entries = []
-    for poem_id in range(1, max_id + 1):
-        url  = f"https://uaell.ecssr.ae/products/poems/{poem_id}"
-        html = _cached_get(url)
-        if not html:
+    try:
+        from playwright.sync_api import sync_playwright  # soft dependency
+    except ImportError:
+        logger.warning(
+            "ECSSR fetch skipped — playwright not installed. "
+            "Run: pip install playwright && playwright install chromium"
+        )
+        return []
+
+    entries:   list[dict] = []
+    all_items: list[dict] = []
+
+    # ── Phase 1: collect raw API items via Playwright ─────────────────────────
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True)
+            page    = browser.new_page()
+
+            csrt_token: list[str] = []
+            first_batch: list[dict] = []
+
+            seen_product_ids: set = set()
+
+            def _on_response(response):
+                if "GetPublishedProductsByTypeId" not in response.url:
+                    return
+                # Capture csrt from the first such request
+                if not csrt_token:
+                    m = re.search(r"csrt=(\d+)", response.url)
+                    if m:
+                        csrt_token.append(m.group(1))
+                try:
+                    body  = response.json()
+                    items = body.get("productViewModels", [])
+                    novel = [i for i in items if i.get("productId") not in seen_product_ids]
+                    for i in novel:
+                        seen_product_ids.add(i.get("productId"))
+                    first_batch.extend(novel)
+                except Exception:
+                    pass
+
+            page.on("response", _on_response)
+            page.goto("https://uaell.ecssr.ae/", wait_until="networkidle", timeout=25000)
+            page.wait_for_timeout(500)
+            page.goto(_ECSSR_POEMS_URL, wait_until="networkidle", timeout=25000)
+            page.wait_for_timeout(3000)
+
+            if not csrt_token:
+                logger.warning("ECSSR: could not capture csrt token — skipping.")
+                browser.close()
+                return []
+
+            if csrt_token:
+                csrt = csrt_token[0]
+                logger.info(f"ECSSR: session ready, first batch={len(first_batch)} poems")
+            else:
+                logger.warning("ECSSR: no csrt captured — session may be incomplete")
+
+            # Paginate by clicking the Angular Material "next" button.
+            # Why not POST: the csrt is session-bound and page.request.post()
+            # returns 200 with empty body when csrt doesn't match the live session.
+            # Clicking the button re-uses the exact session the Angular app built.
+            pages_clicked = 0
+            while len(first_batch) < max_poems:
+                try:
+                    next_btn = page.query_selector('[aria-label="التالـي"]')
+                    if next_btn is None:
+                        break
+                    if next_btn.get_attribute("disabled") is not None:
+                        break
+                    next_btn.click()
+                    page.wait_for_timeout(2200)
+                    pages_clicked += 1
+                    logger.info(f"ECSSR: page {pages_clicked + 1}, total={len(all_items)}")
+                except Exception as page_exc:
+                    logger.warning(f"ECSSR pagination stopped: {page_exc}")
+                    break
+
+            all_items.extend(first_batch)
+            browser.close()
+
+    except Exception as exc:
+        logger.warning(f"ECSSR Playwright session failed: {exc}")
+
+    # ── Phase 2: convert collected items to anchor-registry format ────────────
+    for item in all_items[:max_poems]:
+        text = _strip_html(item.get("productName") or "")
+        if not text or len(text) < 10:
             continue
-        soup = _soup(html)
-        if not soup:
-            continue
-        # Try to extract any Arabic text blocks
-        body = soup.get_text(separator="\n")
-        arabic_lines = [
-            l.strip() for l in body.splitlines()
-            if l.strip() and re.search(r"[؀-ۿ]", l)
-        ]
-        if len(arabic_lines) < 3:
-            continue
-        text = "\n".join(arabic_lines[:30])
+        pid       = item.get("productId", "")
+        poet_name = item.get("characterName") or ""
+        title     = item.get("productTitle") or ""
+        source_url = f"https://uaell.ecssr.ae/products/poems/8?productId={pid}"
         entries.append({
-            "anchor_id":            f"ecssr_{poem_id}",
-            "poet_name":            "",
-            "title":                "",
+            "anchor_id":            f"ecssr_{pid}",
+            "poet_name":            poet_name,
+            "title":                title,
             "text":                 text,
-            "source_url":           url,
+            "source_url":           source_url,
             "source_type":          "online_digitized",
             "source_site":          "uaell.ecssr.ae",
             "source_volume":        "ecssr",
-            "source_page":          str(poem_id),
+            "source_page":          str(pid),
             "source_image_path":    "",
             "manuscript_short_key": "ecssr",
             "genre":                "غير_محدد",
@@ -394,7 +500,8 @@ def fetch_ecssr_poems(max_id: int = 30) -> list[dict]:
             "is_secondary_source":  True,
             "data_tier":            "secondary",
         })
-    logger.info(f"ECSSR: fetched {len(entries)} poem fragments")
+
+    logger.info(f"ECSSR: fetched {len(entries)} poems from UAE Leadership Encyclopedia")
     return entries
 
 
