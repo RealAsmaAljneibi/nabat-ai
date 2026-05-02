@@ -154,7 +154,7 @@ def _aldiwan_poem_urls_for_poet(poet_slug: str, max_poems: int = 20) -> list[str
     soup = _soup(html)
     if not soup:
         return []
-    links = soup.find_all("a", href=re.compile(r"/poem\d+\.html"))
+    links = soup.find_all("a", href=re.compile(r"/?poem\d+\.html"))
     seen, urls = set(), []
     for tag in links:
         href = tag.get("href", "")
