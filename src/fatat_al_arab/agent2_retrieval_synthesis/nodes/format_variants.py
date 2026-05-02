@@ -39,7 +39,7 @@ from fatat_al_arab.guardrails import (
     REFUSAL_TEMPLATE_AR,
     REFUSAL_TEMPLATE_EN,
 )
-from fatat_al_arab.state import AgentState
+from fatat_al_arab.state import AgentState, trace_append
 
 logger = logging.getLogger(__name__)
 
@@ -185,13 +185,17 @@ def format_variants_node(state: AgentState) -> AgentState:
         "citations":    _build_citation_list(passages, citations),
     }
 
+    guardrail_label = "✅ PASS" if guardrail_result.passed else f"❌ FAIL ({', '.join(guardrail_result.flags)})"
     logger.debug(
         "format_variants_node: guardrail=%s, citations=%d, is_refusal=%s",
         "PASS" if guardrail_result.passed else "FAIL",
         len(formatted_response["citations"]),
         is_refusal,
     )
-
+    trace_summary = (
+        f"guardrail {guardrail_label} · {len(formatted_response['citations'])} citation(s)"
+        + (" · ⛔ refusal" if is_refusal else "")
+    )
     return {
         **state,
         "formatted_response": formatted_response,
@@ -199,4 +203,5 @@ def format_variants_node(state: AgentState) -> AgentState:
         "guardrail_flags":    guardrail_result.flags,
         "final_response":     final_text,
         "is_refusal":         is_refusal,
+        "agent_trace": trace_append(state, stage="10", icon="📋", label="Format & Guardrails", summary=trace_summary),
     }

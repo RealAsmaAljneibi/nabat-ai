@@ -29,7 +29,7 @@ from functools import lru_cache
 from typing import Optional
 
 from ...llm import chat
-from ...state import AgentState
+from ...state import AgentState, trace_append
 
 logger = logging.getLogger(__name__)
 
@@ -239,4 +239,6 @@ def semantic_router_node(state: AgentState) -> AgentState:
         new_qc["answer_source"] = new_qc.get("answer_source", "rag_pipeline")
 
     state["query_context"] = new_qc  # type: ignore[assignment]
+    trace_summary = f"track={track} · conf={confidence:.0%} · source=llm"
+    state["agent_trace"] = trace_append(state, stage="0.5b", icon="🧭", label="Semantic Router (LLM)", summary=trace_summary)
     return state

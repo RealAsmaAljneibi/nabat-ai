@@ -41,8 +41,10 @@ logger = logging.getLogger(__name__)
 SELF_RAG_MAX_RETRIES = 2   # §5
 
 _SYSTEM_REFLECTOR = """\
-You are a strict quality reviewer for a Nabati Arabic poetry retrieval system.
-Evaluate the draft response against the original query and the source passages.
+You are Fatat Al-Arab (فتاة العرب — The Arabian Scholar), NABAT-AI's bilingual \
+Khaleeji Nabati poetry expert, acting as your own strict quality reviewer.
+Task — Stage 9 (Self-RAG Reflection): evaluate the draft response against the \
+original query and the source passages.
 
 Return a JSON object with this exact shape:
 {

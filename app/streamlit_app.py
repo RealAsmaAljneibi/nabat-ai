@@ -373,11 +373,11 @@ def _run_agent2_query(state: dict) -> dict:
 def _track_spinner_msg(track: str) -> str:
     """Return the Phase-2 spinner message appropriate for the resolved track."""
     return {
-        "capabilities":     "Preparing capabilities… / تجهيز قائمة الإمكانيات…",
-        "registry_lookup":  "Looking up corpus stats… / البحث في إحصاءات الأرشيف…",
-        "instructor_debug": "Inspecting last turn… / فحص نتائج الدورة السابقة…",
-        "poetic_rag":       "Searching manuscripts… / البحث في المخطوطات…",
-    }.get(track, "Searching manuscripts… / البحث في المخطوطات…")
+        "capabilities":     "📜 Fatat Al-Arab is preparing capabilities… / فتاة العرب تجهّز الإمكانيات…",
+        "registry_lookup":  "🗒️ Al-Nassikh (الناسخ) is counting… / الناسخ يحصي في الأرشيف…",
+        "instructor_debug": "🔬 Fatat Al-Arab is inspecting last turn… / فتاة العرب تفحص الدورة السابقة…",
+        "poetic_rag":       "📜 Fatat Al-Arab is searching manuscripts… / فتاة العرب تبحث في المخطوطات…",
+    }.get(track, "📜 Fatat Al-Arab is searching manuscripts… / فتاة العرب تبحث في المخطوطات…")
 
 
 def render_chat_composer() -> tuple[str, Optional[object], bool]:
@@ -589,7 +589,7 @@ def _render_agent_trace(result: dict) -> None:
     verdict_colour = {"pass": "🟢", "retry": "🟡", "flag": "🔴",
                       "Correct": "🟢", "Ambiguous": "🟡", "Incorrect": "🔴"}
 
-    with st.expander("🤖 Agent Reasoning Trace / مسار تفكير الوكيل", expanded=False):
+    with st.expander("🤖 Fatat Al-Arab — Agent Reasoning Trace / فتاة العرب — مسار التفكير والتصحيح الذاتي", expanded=False):
         for entry in trace:
             icon    = entry.get("icon", "•")
             stage   = entry.get("stage", "")
@@ -1151,7 +1151,7 @@ def _render_workbench() -> None:
                 turn_idx       = len(prior_history)
 
                 # Phase 1 — Agent 1: query understanding + routing
-                with st.spinner("Understanding your question… / فهم سؤالك…"):
+                with st.spinner("🔍 Fatat Al-Arab is understanding your question… / فتاة العرب تفهم سؤالك…"):
                     # Pass prior-turn result as debug_snapshot for instructor_debug queries
                     debug_snap = st.session_state.get("last_result")
                     agent1_state = _run_agent1_query(

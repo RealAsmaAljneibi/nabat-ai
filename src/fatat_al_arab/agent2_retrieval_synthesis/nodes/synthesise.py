@@ -31,15 +31,16 @@ import logging
 from typing import Any
 
 from fatat_al_arab.llm import chat
-from fatat_al_arab.state import AgentState
+from fatat_al_arab.state import AgentState, trace_append
 
 logger = logging.getLogger(__name__)
 
 # ── Prompts ───────────────────────────────────────────────────────────────────
 
 _SYSTEM_SYNTHESISER = """\
-أنت متخصص في الشعر النبطي الخليجي وتحقيق المخطوطات.
-مهمتك: صياغة إجابة دقيقة ومستندة إلى المقاطع المسترجعة من المخطوطات المرقَّمة.
+أنتِ فتاة العرب (الباحثة العربية)، خبيرة الشعر النبطي الخليجي في نظام NABAT-AI.
+المهمة — المرحلة 8 (التوليف): صياغة إجابة دقيقة ومستندة إلى المقاطع المسترجعة \
+من المخطوطات المرقَّمة.
 
 قواعد صارمة:
 1. استند فقط إلى المقاطع المرفقة — لا تضف معلومات من خارجها.
@@ -59,11 +60,16 @@ build on it, extend it, or answer from a different angle.
 """
 
 _SYSTEM_SYNTHESISER_RETRY = """\
-أنت متخصص في الشعر النبطي الخليجي. أعِد صياغة الإجابة مع مراعاة الملاحظات أدناه.
-نفس القواعد: توثيق كل ادعاء بـ [anchor_id:…]، اقتباس حرفي، لا إضافات خارج المقاطع.
+أنتِ فتاة العرب (الباحثة العربية)، خبيرة الشعر النبطي الخليجي في نظام NABAT-AI.
+المهمة — المرحلة 8 إعادة كتابة (Self-RAG): أعيدي صياغة الإجابة مع مراعاة \
+الملاحظات أدناه. نفس القواعد: توثيق كل ادعاء بـ [anchor_id:…]، اقتباس حرفي، \
+لا إضافات خارج المقاطع.
 
-You are a specialist in Nabati Khaleeji poetry. Rewrite the answer addressing the critique below.
-Same rules apply: cite every claim, quote verbatim, no content outside the passages.
+You are Fatat Al-Arab (فتاة العرب — The Arabian Scholar), NABAT-AI's bilingual \
+Khaleeji Nabati poetry expert.
+Task — Stage 8 retry (Self-RAG rewrite): rewrite the answer addressing the \
+critique below. Same rules apply: cite every claim, quote verbatim, no content \
+outside the passages.
 """
 
 
@@ -226,11 +232,16 @@ def synthesise_node(state: AgentState) -> AgentState:
         "synthesise_node: draft length=%d chars, citations=%d.",
         len(draft), len(citations),
     )
-
+    retry_count = state.get("self_rag_retries") or 0
+    trace_summary = (
+        f"draft {len(draft)} chars · {len(citations)} citation(s)"
+        + (f" · retry #{retry_count}" if retry_count else "")
+    )
     return {
         **state,
         "draft_response":   draft,
         "citations_used":   citations,
         "passage_ids_used": passage_ids,
         "is_refusal":       False,
+        "agent_trace": trace_append(state, stage="8", icon="✍️", label="Synthesis", summary=trace_summary),
     }

@@ -40,8 +40,10 @@ logger = logging.getLogger(__name__)
 # ── Prompt ────────────────────────────────────────────────────────────────────
 
 _SYSTEM_GRADER = """\
-You are an expert in Nabati Khaleeji poetry and classical Arabic manuscripts.
-Grade each retrieved passage for relevance to the user query, then decide what to search for next.
+You are Fatat Al-Arab (فتاة العرب — The Arabian Scholar), NABAT-AI's bilingual \
+Khaleeji Nabati poetry expert.
+Task — Stage 7 (CRAG Grading): grade each retrieved passage for relevance to \
+the user query, then decide what to search for next.
 
 Return a JSON object with this exact shape:
 {

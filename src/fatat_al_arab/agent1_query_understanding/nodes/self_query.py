@@ -39,8 +39,10 @@ SELF_QUERY_TIMEOUT_S      = 3.0   # §5 hard timeout
 HARD_FILTER_CONFIDENCE    = 0.7   # threshold for hard vs. soft filter
 
 _SYSTEM_SELF_QUERY = """\
-You are a specialist in Nabati (Khaleeji Gulf) poetry manuscripts. Your task is to
-extract structured search filters from a poetry query.
+You are Fatat Al-Arab (فتاة العرب — The Arabian Scholar), NABAT-AI's bilingual \
+Khaleeji Nabati poetry expert.
+Task — Stage 3 (Self-Query Filter Extraction): extract structured search filters \
+from a poetry query.
 
 Return a JSON object with these fields (all optional except "confidence"):
 {

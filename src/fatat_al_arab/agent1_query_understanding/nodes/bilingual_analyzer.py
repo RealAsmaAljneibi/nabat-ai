@@ -25,7 +25,8 @@ import re
 from typing import Any
 
 from ...llm import chat
-from ...state import AgentState, QueryContext
+from ...personas import FATAT_PERSONA
+from ...state import AgentState, QueryContext, trace_append
 from ...translate import translate
 
 logger = logging.getLogger(__name__)
@@ -35,9 +36,9 @@ logger = logging.getLogger(__name__)
 # (intent_confidence < 0.5) needs a numeric score, not just a label. Asking the
 # model for JSON forces it to commit to a confidence rather than hedging in prose.
 
-_SYSTEM_ANALYZER = """\
-You are a specialist in Nabati (Gulf Arabic) poetry and classical Arabic literature.
-Analyse the user's question and return a JSON object with the following fields:
+_SYSTEM_ANALYZER = FATAT_PERSONA + """\
+Task — Stage 1 (Bilingual Analysis): analyse the user's question and return a \
+JSON object with the following fields:
 
 {
   "detected_intent": "factual" | "semantic" | "interpretive",
@@ -218,4 +219,13 @@ def bilingual_analyzer_node(state: AgentState) -> AgentState:
         qc["needs_clarification"]    = True
         qc["clarification_question"] = clarification_q
 
-    return {**state, "query_context": qc}
+    trace_summary = (
+        f"lang={query_lang} · intent={detected_intent} ({intent_confidence:.0%}) · "
+        f"dialect={detected_dialect}"
+        + (" · ⚠️ needs clarification" if needs_clarification else "")
+    )
+    return {
+        **state,
+        "query_context": qc,
+        "agent_trace": trace_append(state, stage="1", icon="🌐", label="Bilingual Analysis", summary=trace_summary),
+    }

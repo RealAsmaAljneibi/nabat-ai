@@ -25,14 +25,14 @@ import json
 import logging
 
 from ...llm import chat
-from ...state import AgentState
+from ...personas import FATAT_PERSONA
+from ...state import AgentState, trace_append
 
 logger = logging.getLogger(__name__)
 
-_SYSTEM_EXPAND = """\
-You are a specialist in Nabati (Khaleeji Gulf) poetry and Arabic literature.
-Given a user query, generate paraphrases that will help retrieve relevant poems
-from a manuscript collection.
+_SYSTEM_EXPAND = FATAT_PERSONA + """\
+Task — Stage 2b (Bilingual Query Expansion): given a user query, generate \
+paraphrases that will help retrieve relevant poems from the manuscript collection.
 
 Return a JSON object with exactly two keys:
 {
@@ -118,7 +118,12 @@ def bilingual_expand_node(state: AgentState) -> AgentState:
         variants_en = [query_en]
 
     updated_qc = {**qc, "query_variants_ar": variants_ar, "query_variants_en": variants_en}
-    return {**state, "query_context": updated_qc}
+    trace_summary = f"generated {len(variants_ar)} AR + {len(variants_en)} EN variants"
+    return {
+        **state,
+        "query_context": updated_qc,
+        "agent_trace": trace_append(state, stage="2b", icon="🔄", label="Query Expansion", summary=trace_summary),
+    }
 
 
 def expand_bilingual(query_ar: str, query_en: str) -> dict:

@@ -412,6 +412,92 @@ def build_human_judgment_scaffold(scholar_results: list[tuple[dict, dict, float]
     }
 
 
+def run_llm_proxy_judgment(scaffold: dict) -> dict:
+    """
+    Why this exists: the Axis 4 human-judgment table would be all 'pending'
+    at the demo. This function uses the LLM (same provider as inference) as a
+    proxy reviewer on the three Likert axes, clearly labelled as LLM-proxy
+    rather than scholar scores. Serves as a concrete estimate until a real
+    Nabati poetry expert can review.
+
+    The prompt is deliberately adversarial (find weaknesses) to counteract
+    the LLM's tendency to rate its own outputs highly.
+    Returns an updated scaffold dict with scores filled in and aggregates computed.
+    """
+    try:
+        from fatat_al_arab.llm import chat
+    except ImportError:
+        return scaffold  # LLM unavailable — leave as pending
+
+    _PROXY_SYSTEM = """\
+You are an expert evaluator of Arabic poetry retrieval systems. \
+You are reviewing responses from a Nabati Khaleeji poetry RAG system. \
+Be a strict, adversarial reviewer — actively look for weaknesses.
+
+For each response, score on three axes (integer 1-5):
+  faithfulness:     Does every factual claim trace to a real cited source? \
+                    Deduct for any claim that lacks an [anchor_id:…] citation.
+  dialect_fidelity: Is authentic Khaleeji Nabati vocabulary and register preserved? \
+                    Deduct for MSA-flattening of Gulf dialect terms.
+  usefulness:       Would a researcher or poetry enthusiast find this genuinely helpful? \
+                    Deduct for vague, repetitive, or off-topic content.
+
+Return ONLY a JSON array (one object per response, in the same order):
+[{"query_id": "...", "faithfulness": <1-5>, "dialect_fidelity": <1-5>, \
+"usefulness": <1-5>, "notes": "<one sentence critique>"}]
+"""
+
+    responses = scaffold.get("responses") or []
+    if not responses:
+        return scaffold
+
+    batch_input = "\n\n".join(
+        f"[{r['query_id']}] Query: {r['query_ar'][:120]}\n"
+        f"Response snippet: {r['final_response'][:400]}\n"
+        f"Citations: {r['citations_count']}"
+        for r in responses
+    )
+
+    try:
+        raw = chat(
+            prompt=f"Review these {len(responses)} responses:\n\n{batch_input}",
+            system=_PROXY_SYSTEM,
+            json_schema={"type": "array"},
+            max_tokens=1200,
+        )
+        scores_list: list[dict] = raw if isinstance(raw, list) else json.loads(raw)
+        scores_by_id = {s["query_id"]: s for s in scores_list if isinstance(s, dict)}
+    except Exception as exc:
+        logging.getLogger(__name__).warning("llm_proxy_judgment: scoring failed (%s)", exc)
+        return scaffold
+
+    updated = []
+    f_scores, d_scores, u_scores = [], [], []
+    for r in responses:
+        qid = r["query_id"]
+        s = scores_by_id.get(qid, {})
+        r = dict(r)
+        r["likert_faithfulness"]    = s.get("faithfulness")
+        r["likert_dialect_fidelity"] = s.get("dialect_fidelity")
+        r["likert_usefulness"]      = s.get("usefulness")
+        r["scholar_notes"]          = s.get("notes", "")
+        r["scored_by"]              = "llm_proxy"
+        updated.append(r)
+        if s.get("faithfulness"):    f_scores.append(s["faithfulness"])
+        if s.get("dialect_fidelity"): d_scores.append(s["dialect_fidelity"])
+        if s.get("usefulness"):      u_scores.append(s["usefulness"])
+
+    scaffold = dict(scaffold)
+    scaffold["responses"] = updated
+    scaffold["aggregate"] = {
+        "mean_faithfulness":     round(mean(f_scores), 2) if f_scores else None,
+        "mean_dialect_fidelity": round(mean(d_scores), 2) if d_scores else None,
+        "mean_usefulness":       round(mean(u_scores), 2) if u_scores else None,
+        "scored_by":             "llm_proxy (pending human scholar review)",
+    }
+    return scaffold
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # CER bucket summary (from phase4_merge_audit if available)
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -505,12 +591,28 @@ def render_report(
         cer_block = f"\n_{cer_note}_\n"
 
     # Human judgment sample (first 3 entries for display)
+    agg = human.get("aggregate") or {}
+    proxy_scored = bool(agg.get("scored_by"))
+    def _likert(v):
+        return f"{v:.1f}" if v is not None else "*(pending)*"
     human_rows = ""
     for entry in (human.get("responses") or [])[:3]:
         snip = (entry.get("final_response") or "")[:120].replace("|", "\\|")
-        human_rows += f"| {entry.get('query_id', '?')} | {snip}… | — | — | — |\n"
+        f_val = _likert(entry.get("likert_faithfulness"))
+        d_val = _likert(entry.get("likert_dialect_fidelity"))
+        u_val = _likert(entry.get("likert_usefulness"))
+        human_rows += f"| {entry.get('query_id', '?')} | {snip}… | {f_val} | {d_val} | {u_val} |\n"
     if not human_rows:
         human_rows = "| *(no responses to display)* | — | — | — | — |\n"
+    human_agg_label = (
+        f"> ⚠️ Scored by LLM proxy — pending human Nabati scholar review.\n\n"
+        if proxy_scored else ""
+    )
+    human_agg_block = (
+        f"| Faithfulness | {_likert(agg.get('mean_faithfulness'))} |\n"
+        f"| Dialect Fidelity | {_likert(agg.get('mean_dialect_fidelity'))} |\n"
+        f"| Usefulness | {_likert(agg.get('mean_usefulness'))} |\n"
+    )
 
     # Metric status lines
     cit_ok  = c.get("citation_resolvability_rate", 0) >= c.get("citation_resolvability_target", 1.0)
@@ -597,8 +699,7 @@ def render_report(
 
 ## Axis 4 — Human Judgment
 
-*A Nabati poetry scholar will review a 15-response sample and score each on three
-5-point Likert axes. The table below is the scaffold to be filled in offline.*
+*A 15-response sample scored on three 5-point Likert axes.*
 
 ### Likert axes
 
@@ -613,17 +714,13 @@ def render_report(
 | Query ID | Response snippet | Faithfulness | Dialect Fidelity | Usefulness |
 |---|---|---|---|---|
 {human_rows}
-> **Fill in:** a Khaleeji Nabati poetry expert reviews the full 15-response sample
-> in `data/evaluation_raw.json` under the `human_judgment.responses` key and
-> records scores + notes per response. Aggregate means are updated in this report.
+> **Full sample:** see `data/evaluation_raw.json` → `human_judgment.responses`.
 
-**Current aggregate (pending scholar review):**
+{human_agg_label}**Current aggregate:**
 
 | Axis | Mean score |
 |---|---|
-| Faithfulness | *(pending)* |
-| Dialect Fidelity | *(pending)* |
-| Usefulness | *(pending)* |
+{human_agg_block}
 
 ---
 
@@ -710,6 +807,9 @@ def main() -> None:
     robustness  = evaluate_robustness(all_results)
     efficiency  = evaluate_efficiency(all_results)
     human       = build_human_judgment_scaffold(scholar_results)
+    if os.getenv("LLM_PROVIDER", "stub") != "stub":
+        print("[4/4] Running LLM-proxy Axis 4 scoring…")
+        human = run_llm_proxy_judgment(human)
     cer         = _load_cer_summary()
 
     # Render and write report

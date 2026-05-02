@@ -30,7 +30,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from fatat_al_arab.state import AgentState
+from fatat_al_arab.state import AgentState, trace_append
 
 logger = logging.getLogger(__name__)
 
@@ -222,8 +222,12 @@ def resolve_heritage_node(state: AgentState) -> AgentState:
         "resolve_heritage_node: resolved %d/%d passages.",
         resolvable_count, len(resolved),
     )
-
-    return {**state, "resolved_passages": resolved}
+    trace_summary = f"resolved {resolvable_count}/{len(resolved)} passages — citations attached"
+    return {
+        **state,
+        "resolved_passages": resolved,
+        "agent_trace": trace_append(state, stage="6", icon="📜", label="Heritage Resolution", summary=trace_summary),
+    }
 
 
 # ── Utility for tests / evaluation ────────────────────────────────────────────
