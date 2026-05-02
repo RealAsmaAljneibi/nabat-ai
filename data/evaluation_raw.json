@@ -1,23 +1,23 @@
 {
-  "run_date": "2026-05-02 00:54 UTC",
+  "run_date": "2026-05-02 05:52 UTC",
   "provider": "together",
   "correctness": {
     "citation_resolvability_rate": 1.0,
     "citation_resolvability_target": 1.0,
-    "recall_at_5": 0.0769,
-    "recall_at_5_relaxed": 0.4615,
+    "recall_at_5": 0.1538,
+    "recall_at_5_relaxed": 0.7692,
     "recall_at_5_target": 0.75,
     "refusal_precision_ooc": 0.95,
     "refusal_precision_target": 0.9,
-    "reference_hit_rate": 0.2,
-    "reference_hit_rate_total": 5,
-    "reference_hit_rate_active": 1,
+    "reference_hit_rate": 0.0,
+    "reference_hit_rate_total": 2,
+    "reference_hit_rate_active": 0,
     "crag_verdict_distribution": {
-      "Correct": 11,
-      "Ambiguous": 7,
-      "Incorrect": 2
+      "Ambiguous": 9,
+      "Correct": 8,
+      "Incorrect": 3
     },
-    "non_refusal_count": 5,
+    "non_refusal_count": 2,
     "ooc_total": 20,
     "ooc_refusal_count": 19
   },
@@ -25,60 +25,30 @@
     "total_queries": 60,
     "crag_requery_rate": 0.3333,
     "self_rag_retry_rate": 0.1167,
-    "self_rag_budget_exhaustion_rate": 0.1167,
+    "self_rag_budget_exhaustion_rate": 0.0833,
     "fallback_llm_rate": 0.0,
     "retriever_drop_rate": 0.0,
     "crag_requery_count": 20,
     "self_rag_retry_count": 7
   },
   "efficiency": {
-    "p50_ms": 13135.1,
-    "p95_ms": 34712.1,
-    "mean_ms": 12472.1,
+    "p50_ms": 14418.9,
+    "p95_ms": 29372.7,
+    "mean_ms": 13206.8,
     "p50_target_ms": 4000,
     "p95_target_ms": 8000,
     "p50_meets_target": false,
     "p95_meets_target": false,
     "per_stage_avg_ms": {
-      "agent1_ms": 5054.1,
-      "agent2_ms": 7418.0
+      "agent1_ms": 5586.0,
+      "agent2_ms": 7620.7
     },
     "sample_count": 60
   },
   "human_judgment": {
     "instruction": "A Nabati poetry scholar reviews the 15 responses below on three axes: (1) Faithfulness — does every claim match a real manuscript passage? (2) Dialect Fidelity — is the Khaleeji register authentic? (3) Usefulness — would a researcher or enthusiast find this helpful? Score each 1 (poor) to 5 (excellent). Record notes in 'scholar_notes'.",
-    "sample_size": 5,
+    "sample_size": 2,
     "responses": [
-      {
-        "query_id": "sq01",
-        "query_ar": "ما هي قصائد الخيل في الشعر النبطي الخليجي؟",
-        "final_response": "قصائد الخيل في الشعر النبطي الخليجي تظهر بشكل واضح في العديد من الأبيات الشعرية، حيث يرتبط ذكر الديار بذكر الخيل والنعم والحسناوات اللاتي كان الشاعر يسامرهن ويتلهى بمداعبتهن. هذا الموضوع تقليدي يكثر الشعراء النبطيون من طرقه، كما يظهر في قصيدة علي بن عمر بن إبراهيم من رؤؤساء بني عامر وقصيدة سلطان بن مظفر بن يحيى من الذواودة. هذا النوع من الشعر يربط بين مكان الشاعر وحياته الشخصية وثرائه، كما يشير ابن خلدون إلى هذه العلاقة في قصائده التي أوردها من الشعر الهلالي القديم، حيث يربط بين ذكر الديار والخي",
-        "citations_count": 2,
-        "likert_faithfulness": null,
-        "likert_dialect_fidelity": null,
-        "likert_usefulness": null,
-        "scholar_notes": ""
-      },
-      {
-        "query_id": "sq04",
-        "query_ar": "ابحث عن أشعار الغزل في مخطوطة هوبر",
-        "final_response": "يحتوي السجل الرسمي على **25** مخطوطة. منها **15** مخطوطة تحتوي على فهرس (جدول محتويات) قابل للقراءة، وتم استخراج بياناتها إلى طبقة الاسترجاع.\n\n---\n\nThe canonical registry holds **25** manuscripts. **15** of them have a legible table of contents and were merged into the retrieval layer.",
-        "citations_count": 1,
-        "likert_faithfulness": null,
-        "likert_dialect_fidelity": null,
-        "likert_usefulness": null,
-        "scholar_notes": ""
-      },
-      {
-        "query_id": "sq11",
-        "query_ar": "ما هي أبيات الحكمة المشهورة في الشعر النبطي؟",
-        "final_response": "تحتوي المجموعة على **28** قصيدة مصنَّفة تحت **حكمة** (من أصل 2,222 قصيدة مفهرسة). المرتبة بين الأنواع المصنَّفة: #7 of 10. من أبرز الشعراء في هذا النوع: غير محدد، زيد السلامه الخوير، محمد العبدالله القاضي. التصنيف هنا heuristic_v1 (خط أساس فضي) وليس حكماً بشرياً نهائياً.\n\n---\n\nThe corpus carries **28** poems classified as **wisdom / gnomic verse (hikma)** (out of 2,222 indexed). Rank among classified genres: #7 of 10. Representative poets for this genre include: غير محدد, زيد السلامه الخوير, محم",
-        "citations_count": 1,
-        "likert_faithfulness": null,
-        "likert_dialect_fidelity": null,
-        "likert_usefulness": null,
-        "scholar_notes": ""
-      },
       {
         "query_id": "sq13",
         "query_ar": "الشعر في مدح آل سعود في المخطوطات الخليجية",
@@ -90,9 +60,9 @@
         "scholar_notes": ""
       },
       {
-        "query_id": "sq17",
-        "query_ar": "أشعار العيد والأفراح في المخطوطات الخليجية",
-        "final_response": "يحتوي السجل الرسمي على **25** مخطوطة. منها **15** مخطوطة تحتوي على فهرس (جدول محتويات) قابل للقراءة، وتم استخراج بياناتها إلى طبقة الاسترجاع.\n\n---\n\nThe canonical registry holds **25** manuscripts. **15** of them have a legible table of contents and were merged into the retrieval layer.",
+        "query_id": "sq18",
+        "query_ar": "كيف وصف شعراء الخليج القمر في قصائدهم؟",
+        "final_response": "كيف وصف شعراء الخليج القمر في قصائدهم؟\n\nيظهر في بعض قصائد الشعر النبطي الخليجي وصف القمر بوصفه مرتبطًا بالحزن أو الغياب. على سبيل المثال، يقول شاعر من شعراء الخليج في قصيدة له: \"البارحه حلم من الله لى لاح\" [anchor_id:manuscript18_p26_r019c0]. هذا البيت يشير إلى أن القمر كان حلمًا في الليلة السابقة، مما يعكس حالة من الغياب أو النقص.",
         "citations_count": 1,
         "likert_faithfulness": null,
         "likert_dialect_fidelity": null,
@@ -134,34 +104,31 @@
         "gold_page": null,
         "notes": "Theme query — should retrieve multiple equestrian verse passages"
       },
-      "is_refusal": false,
-      "elapsed_ms": 26836.516042007133,
-      "crag_verdict": "Correct",
-      "citations_used": [
-        "reference_ibn_khaldoun_p022_para01",
-        "reference_ibn_khaldoun_p022_para01"
-      ],
+      "is_refusal": true,
+      "elapsed_ms": 15914.664375013672,
+      "crag_verdict": "Ambiguous",
+      "citations_used": [],
       "rrf_top5_anchor_ids": [
-        "manuscript19_p15_v018",
-        "reference_ibn_khaldoun_p022_para01",
+        "manuscript22_p55_v002",
+        "manuscript22_p70_v011",
+        "manuscript07_p35_v014",
+        "manuscript03_p87_r026c0",
+        "manuscript06_p250_r011c0",
         "",
-        "manuscript07_p35_v001",
-        "maai7103_poem0020_em_v3075",
-        "reference_ibn_khaldoun_p004_para05",
-        "maai7103_poem0085_qa_v1805",
-        "reference_semiotics_p028_para05",
-        "manuscript12_p378_r037c0",
-        "reference_ibn_khaldoun_p018_para03",
-        "maai7103_poem0085_qa_v1992",
-        "reference_ibn_khaldoun_p003_para01",
-        "reference_ibn_khaldoun_p017_para04",
-        "reference_suloom_alarab_p027_para04",
-        "maai7103_poem0015_em_v1254",
-        "reference_ibn_khaldoun_p001_para01",
-        "manuscript04_p45_v011",
+        "aldiwan_99815",
+        "ecssr_12187_b01",
+        "ecssr_11756_b63",
+        "aldiwan_137030_b17",
+        "aldiwan_137023_b20",
+        "aldiwan_110704_b08",
+        "ecssr_9102_b05",
+        "aldiwan_137030_b73",
+        "aldiwan_137023_b13",
+        "ecssr_9856_b02",
+        "reference_ibn_khaldoun_p022_para01",
+        "reference_ibn_khaldoun_p022_para02",
         "reference_ibn_khaldoun_p002_para01",
-        "maai7103_poem0041_sa_v2542",
-        "reference_ibn_khaldoun_p002_para04"
+        "reference_ibn_khaldoun_p004_para05"
       ]
     },
     {
@@ -177,30 +144,30 @@
         "notes": "Poet bio + verse query — should retrieve bio from poets_bio.json"
       },
       "is_refusal": true,
-      "elapsed_ms": 14040.94883298967,
+      "elapsed_ms": 13454.249375034124,
       "crag_verdict": "Ambiguous",
       "citations_used": [],
       "rrf_top5_anchor_ids": [
-        "manuscript21_p20_v005",
-        "reference_desert_culture_p018_para02",
-        "reference_desert_culture_p035_para03",
-        "reference_ibn_khaldoun_p009_para02",
-        "maai7103_poem0081_ku_v0449",
-        "maai7103_poem_new_03_v3230",
-        "maai7103_poem0043_sa_v2966",
-        "manuscript18_p26_r038c0",
-        "maai7103_poem0085_qa_v1902",
-        "manuscript14_p30_v001",
-        "manuscript18_p26_r036c0",
-        "reference_desert_culture_p035_para04",
-        "manuscript12_p377_r003c0",
-        "manuscript07_p50_v013",
-        "maai7103_poem0081_ku_v0465",
-        "manuscript06_p252_r015c0",
-        "manuscript06_p255_r025c0",
-        "manuscript14_p30_v002",
-        "maai7103_poem0043_sa_v2967",
-        "maai7103_poem0079_ku_v2609"
+        "manuscript18_p26_r005c0",
+        "manuscript14_p102_v006",
+        "manuscript03_p10_v020",
+        "601-782_p178_r017c0",
+        "601-782_p179_r005c1",
+        "manuscript05_p40_v010",
+        "601-782_p178_r002c1",
+        "manuscript06_p30_v002",
+        "manuscript05_p305_r036c0",
+        "manuscript05_p302_r014c0",
+        "manuscript01_p71_r020c0",
+        "manuscript22_p20_v014",
+        "ecssr_9529_b02",
+        "aldiwan_137031_b13",
+        "aldiwan_99817_b12",
+        "ecssr_8568_b11",
+        "aldiwan_110695_b01",
+        "aldiwan_137029_b20",
+        "aldiwan_137025_b20",
+        "reference_desert_culture_p007_para03"
       ]
     },
     {
@@ -216,32 +183,30 @@
         "notes": "Interpretive intent — should activate HyDE passage generation"
       },
       "is_refusal": true,
-      "elapsed_ms": 21383.05891607888,
-      "crag_verdict": "Correct",
-      "citations_used": [
-        "601-782_p179_r010c0"
-      ],
+      "elapsed_ms": 12422.23962501157,
+      "crag_verdict": "Ambiguous",
+      "citations_used": [],
       "rrf_top5_anchor_ids": [
-        "",
-        "maai7103_poem0085_qa_v1992",
-        "manuscript22_p2_r008c0",
-        "manuscript22_p70_v013",
-        "maai7103_poem0036_sa_v2127",
-        "maai7103_poem0050_sa_v1475",
-        "maai7103_poem_new_01_v3182",
-        "manuscript22_p70_v011",
-        "601-782_p179_r010c0",
-        "maai7103_poem0041_sa_v2492",
-        "manuscript19_p25_v009",
-        "manuscript22_p70_v012",
-        "maai7103_poem0015_em_v1215",
-        "maai7103_poem0091_qa_v2715",
-        "reference_ibn_khaldoun_p006_para02",
-        "maai7103_poem0050_sa_v1474",
-        "maai7103_poem0061_om_v2917",
-        "manuscript03_p87_r043c0",
-        "maai7103_poem0085_qa_v1858",
-        "maai7103_poem0091_qa_v2709"
+        "manuscript19_p15_v016",
+        "manuscript22_p70_v003",
+        "601-782_p179_r015c0",
+        "manuscript03_p50_v012",
+        "manuscript18_p24_r003c0",
+        "manuscript05_p302_r014c0",
+        "manuscript05_p301_r034c0",
+        "manuscript06_p30_v001",
+        "manuscript19_p25_v022",
+        "manuscript10_p1_r014c0",
+        "ecssr_12061_b04",
+        "ecssr_7698_b04",
+        "aldiwan_110695_b26",
+        "aldiwan_110695_b24",
+        "aldiwan_137026_b50",
+        "ecssr_9657_b03",
+        "aldiwan_1065_b22",
+        "reference_semiotics_p024_para01",
+        "reference_semiotics_p025_para01",
+        "reference_ibn_khaldoun_p012_para02"
       ]
     },
     {
@@ -261,13 +226,27 @@
         "gold_page": null,
         "notes": "Manuscript-scoped query — self_query should extract manuscript_short_key=huber_1"
       },
-      "is_refusal": false,
-      "elapsed_ms": 27.285375050269067,
+      "is_refusal": true,
+      "elapsed_ms": 16067.433750024065,
       "crag_verdict": "Correct",
       "citations_used": [
-        "manuscript_registry.json"
+        "manuscript01_p70_r006c0",
+        "manuscript01_p70_r006c0"
       ],
-      "rrf_top5_anchor_ids": []
+      "rrf_top5_anchor_ids": [
+        "manuscript01_p70_r028c0",
+        "manuscript01_p71_r022c0",
+        "manuscript01_p71_r009c0",
+        "manuscript01_p72_r009c0",
+        "manuscript01_p72_r020c0",
+        "manuscript01_p70_r006c0",
+        "manuscript01_p12_v006",
+        "manuscript01_p70_r030c0",
+        "manuscript01_p71_r016c0",
+        "manuscript01_p71_r015c0",
+        "manuscript01_p71_r020c0",
+        "manuscript01_p72_r026c0"
+      ]
     },
     {
       "fixture": {
@@ -285,18 +264,30 @@
         "notes": "Geographic + theme query — dialect filter najdi should fire"
       },
       "is_refusal": true,
-      "elapsed_ms": 22149.95125005953,
+      "elapsed_ms": 14284.17554195039,
       "crag_verdict": "Ambiguous",
-      "citations_used": [
-        "manuscript06_p250_r011c0",
-        "manuscript06_p252_r008c0"
-      ],
+      "citations_used": [],
       "rrf_top5_anchor_ids": [
-        "manuscript22_p55_v002",
-        "manuscript06_p250_r011c0",
         "manuscript22_p70_v011",
+        "ecssr_9843_b08",
+        "manuscript03_p87_r026c0",
+        "manuscript15_p66_v004",
+        "manuscript22_p55_v002",
+        "manuscript07_p8_v012",
+        "manuscript07_p65_v029",
+        "manuscript06_p250_r011c0",
+        "manuscript05_p302_r047c0",
+        "manuscript12_p377_r022c0",
+        "manuscript05_p303_r050c0",
+        "manuscript05_p302_r015c0",
         "manuscript07_p35_v014",
-        "manuscript06_p252_r008c0"
+        "manuscript15_p66_v002",
+        "manuscript15_p66_v003",
+        "aldiwan_110695_b30",
+        "aldiwan_137028_b33",
+        "ecssr_7674_b02",
+        "ecssr_9856_b02",
+        "aldiwan_137030_b17"
       ]
     },
     {
@@ -316,11 +307,12 @@
         "notes": "Exact matla retrieval — should return verbatim matla_text from anchor"
       },
       "is_refusal": true,
-      "elapsed_ms": 12132.988292025402,
+      "elapsed_ms": 11050.723624997772,
       "crag_verdict": "Correct",
       "citations_used": [],
       "rrf_top5_anchor_ids": [
         "manuscript01_p70_r002c0",
+        "manuscript06_p252_r009c0",
         "601-782_p178_r024c1"
       ]
     },
@@ -337,29 +329,29 @@
         "notes": "Cultural theme — should hit multiple manuscripts"
       },
       "is_refusal": true,
-      "elapsed_ms": 34972.47554198839,
+      "elapsed_ms": 13357.775999931619,
       "crag_verdict": "Correct",
       "citations_used": [],
       "rrf_top5_anchor_ids": [
-        "601-782_p180_r006c1",
-        "reference_ibn_khaldoun_p019_para01",
-        "maai7103_poem0027_sa_v0744",
-        "reference_ibn_khaldoun_p018_para00",
-        "maai7103_poem0016_em_v3010",
-        "reference_ibn_khaldoun_p003_para01",
-        "manuscript05_p303_r039c0",
-        "reference_ibn_khaldoun_p023_para01",
-        "maai7103_poem0041_sa_v2479",
-        "reference_ibn_khaldoun_p004_para05",
-        "maai7103_poem0013_em_v0091",
-        "reference_ibn_khaldoun_p019_para02",
-        "maai7103_poem0090_qa_v0902",
-        "reference_desert_culture_p024_para04",
-        "reference_desert_culture_p013_para05",
-        "reference_ibn_khaldoun_p018_para04",
-        "maai7103_poem0062_om_v0857",
-        "maai7103_poem0077_ku_v3162",
-        "maai7103_poem0025_sa_v0003",
+        "manuscript18_p26_r035c0",
+        "manuscript12_p378_r004c0",
+        "manuscript05_p40_v007",
+        "manuscript22_p12_v013",
+        "",
+        "manuscript06_p255_r029c0",
+        "manuscript07_p50_v013",
+        "aldiwan_99817_b16",
+        "manuscript01_p12_v014",
+        "manuscript18_p26_r030c0",
+        "ecssr_9528_b11",
+        "aldiwan_1065_b56",
+        "aldiwan_1065_b52",
+        "ecssr_7695_b06",
+        "ecssr_10128_b01",
+        "aldiwan_967_b09",
+        "aldiwan_967_b18",
+        "ecssr_9828_b06",
+        "reference_desert_culture_p026_para03",
         "reference_desert_culture_p016_para05"
       ]
     },
@@ -381,30 +373,32 @@
         "notes": "Poet + theme — should filter by poet_name and theme simultaneously"
       },
       "is_refusal": true,
-      "elapsed_ms": 14255.507125053555,
-      "crag_verdict": "Ambiguous",
-      "citations_used": [],
+      "elapsed_ms": 19367.565499967895,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript06_p253_r041c0"
+      ],
       "rrf_top5_anchor_ids": [
-        "maai7103_poem0051_om_v2354",
-        "manuscript06_p252_r005c0",
-        "maai7103_poem0096_qa_v0281",
-        "manuscript22_p20_v007",
-        "maai7103_poem0030_sa_v2569",
-        "maai7103_poem_new_02_v3216",
-        "maai7103_poem0077_ku_v3153",
-        "maai7103_poem0081_ku_v0472",
-        "maai7103_poem0007_em_v1317",
-        "maai7103_poem0085_qa_v1943",
-        "manuscript18_p26_r019c0",
-        "reference_desert_culture_p041_para03",
-        "maai7103_poem0096_qa_v0282",
+        "manuscript06_p50_v014",
+        "manuscript08_p15_v003",
+        "manuscript06_p255_r040c0",
+        "manuscript21_p2_r035c0",
+        "manuscript19_p25_v004",
         "manuscript19_p5_v023",
-        "601-782_p181_r009c1",
-        "maai7103_poem0051_om_v2352",
-        "maai7103_poem0051_om_v2353",
-        "reference_semiotics_p001_para02",
-        "maai7103_poem0011_em_v0721",
-        "maai7103_poem0096_qa_v0279"
+        "manuscript07_p20_v009",
+        "601-782_p180_r005c1",
+        "manuscript01_p12_v009",
+        "manuscript06_p253_r041c0",
+        "manuscript03_p87_r027c0",
+        "manuscript19_p5_v021",
+        "manuscript01_p70_r021c0",
+        "manuscript19_p5_v022",
+        "manuscript07_p20_v019",
+        "manuscript14_p113_v009",
+        "aldiwan_1066_b19",
+        "ecssr_7705_b06",
+        "aldiwan_147412_b08",
+        "ecssr_9657_b02"
       ]
     },
     {
@@ -420,30 +414,30 @@
         "notes": "Meta-poetic question — expects factual synthesis from corpus"
       },
       "is_refusal": true,
-      "elapsed_ms": 18021.313457982615,
+      "elapsed_ms": 18216.15141700022,
       "crag_verdict": "Incorrect",
       "citations_used": [],
       "rrf_top5_anchor_ids": [
         "601-782_p178_r014c1",
-        "reference_ibn_khaldoun_p001_para01",
-        "maai7103_poem0085_qa_v1950",
-        "reference_ibn_khaldoun_p004_para05",
         "manuscript03_p87_r025c0",
-        "reference_ibn_khaldoun_p024_para02",
-        "maai7103_poem_new_02_v3194",
-        "reference_ibn_khaldoun_p020_para03",
-        "maai7103_poem0085_qa_v1872",
         "manuscript04_p59_r026c0",
         "manuscript05_p15_v015",
-        "reference_ibn_khaldoun_p021_para02",
-        "maai7103_poem0056_om_v1610",
-        "maai7103_poem0085_qa_v1873",
         "manuscript10_p2_r016c0",
-        "maai7103_poem0015_em_v1217",
-        "maai7103_poem0085_qa_v1874",
-        "maai7103_poem0105_bh_v0671",
-        "reference_ibn_khaldoun_p019_para02",
-        "601-782_p181_r022c1"
+        "601-782_p181_r022c1",
+        "manuscript06_p250_r033c0",
+        "manuscript12_p378_r013c0",
+        "ecssr_9527_b01",
+        "ecssr_9856_b13",
+        "ecssr_7690_b01",
+        "ecssr_7674_b08",
+        "ecssr_7293_b08",
+        "ecssr_8540_b01",
+        "ecssr_9533_b11",
+        "ecssr_9525_b05",
+        "aldiwan_137028_b04",
+        "ecssr_8538_b18",
+        "aldiwan_110704_b12",
+        "aldiwan_1066_b09"
       ]
     },
     {
@@ -464,30 +458,30 @@
         "notes": "Manuscript series query — should resolve to multiple ibn_yahya volumes"
       },
       "is_refusal": true,
-      "elapsed_ms": 10160.074332961813,
+      "elapsed_ms": 29200.323250028305,
       "crag_verdict": "Ambiguous",
       "citations_used": [],
       "rrf_top5_anchor_ids": [
-        "601-782_p181_r027c0",
-        "manuscript06_p250_r033c0",
         "601-782_p178_r009c1",
-        "maai7103_poem0068_ku_v1392",
+        "manuscript06_p250_r033c0",
+        "601-782_p181_r027c0",
         "manuscript19_p25_v017",
-        "manuscript03_p87_r026c0",
         "601-782_p181_r025c0",
-        "maai7103_poem0081_ku_v0451",
-        "maai7103_poem0075_ku_v2590",
-        "reference_desert_culture_p023_para00",
-        "601-782_p178_r007c1",
         "manuscript07_p8_v009",
-        "manuscript05_p305_r022c0",
-        "manuscript07_p65_v023",
-        "maai7103_poem0062_om_v0863",
+        "601-782_p178_r007c1",
         "601-782_p178_r008c1",
+        "manuscript07_p65_v023",
         "manuscript06_p253_r023c0",
-        "maai7103_poem0085_qa_v1798",
-        "reference_ibn_khaldoun_p012_para02",
-        "manuscript06_p251_r045c0"
+        "manuscript06_p251_r045c0",
+        "manuscript05_p70_v012",
+        "manuscript03_p10_v016",
+        "601-782_p180_r003c1",
+        "manuscript06_p255_r015c0",
+        "601-782_p181_r021c0",
+        "manuscript18_p25_r016c0",
+        "ecssr_11756_b25",
+        "ecssr_9103_b08",
+        "ecssr_7295_b10"
       ]
     },
     {
@@ -507,13 +501,32 @@
         "gold_page": null,
         "notes": "Wisdom/hikma theme — broad semantic search across corpus"
       },
-      "is_refusal": false,
-      "elapsed_ms": 1.1177919805049896,
+      "is_refusal": true,
+      "elapsed_ms": 10427.162874955684,
       "crag_verdict": "Correct",
-      "citations_used": [
-        "anchor_registry_phase4_enriched.json"
-      ],
-      "rrf_top5_anchor_ids": []
+      "citations_used": [],
+      "rrf_top5_anchor_ids": [
+        "manuscript12_p377_r017c0",
+        "manuscript12_p379_r043c0",
+        "4byt_18672",
+        "manuscript01_p70_r015c0",
+        "601-782_p179_r010c0",
+        "manuscript19_p25_v022",
+        "manuscript07_p8_v004",
+        "manuscript03_p87_r016c0",
+        "manuscript12_p378_r037c0",
+        "ecssr_11756_b51",
+        "ecssr_9527_b01",
+        "ecssr_11756_b37",
+        "ecssr_6006",
+        "ecssr_9669_b07",
+        "ecssr_11756_b31",
+        "ecssr_11756_b57",
+        "ecssr_8540_b02",
+        "ecssr_8538_b02",
+        "ecssr_11756_b21",
+        "aldiwan_137030_b69"
+      ]
     },
     {
       "fixture": {
@@ -528,30 +541,30 @@
         "notes": "Matla identification — exact text match should dominate BM25 score"
       },
       "is_refusal": true,
-      "elapsed_ms": 8995.892541948706,
+      "elapsed_ms": 10430.065624997951,
       "crag_verdict": "Correct",
       "citations_used": [],
       "rrf_top5_anchor_ids": [
-        "manuscript21_p3_r005c0",
-        "reference_suloom_alarab_p022_para01",
-        "manuscript06_p250_r031c0",
+        "manuscript05_p305_r023c0",
         "manuscript21_p2_r040c0",
-        "maai7103_poem0047_sa_v2039",
+        "manuscript12_p378_r021c0",
         "manuscript21_p2_r033c0",
-        "maai7103_poem0012_em_v2086",
-        "maai7103_poem0096_qa_v0267",
-        "maai7103_poem0096_qa_v0269",
-        "manuscript06_p250_r010c0",
-        "maai7103_poem0023_em_v1087",
-        "maai7103_poem0063_om_v2807",
-        "maai7103_poem0085_qa_v1931",
-        "maai7103_poem0072_ku_v0198",
-        "601-782_p181_r009c1",
-        "maai7103_poem0096_qa_v0268",
-        "manuscript05_p302_r021c0",
-        "manuscript06_p253_r030c0",
+        "manuscript15_p41_v009",
+        "601-782_p178_r001c0",
+        "manuscript06_p251_r024c0",
+        "manuscript05_p303_r031c0",
+        "manuscript14_p30_v007",
+        "manuscript12_p379_r016c0",
+        "manuscript21_p3_r008c0",
+        "manuscript21_p2_r016c0",
+        "manuscript01_p72_r021c0",
+        "manuscript12_p377_r028c0",
+        "manuscript14_p30_v009",
+        "manuscript06_p255_r001c0",
+        "601-782_p178_r007c0",
+        "601-782_p179_r008c1",
         "601-782_p178_r001c1",
-        "maai7103_poem0092_qa_v1642"
+        "manuscript12_p377_r012c0"
       ]
     },
     {
@@ -567,7 +580,7 @@
         "notes": "Political panegyric — sensitive content but historically documented"
       },
       "is_refusal": false,
-      "elapsed_ms": 27.55129197612405,
+      "elapsed_ms": 24.636332993395627,
       "crag_verdict": "Correct",
       "citations_used": [
         "manuscript_registry.json"
@@ -592,30 +605,30 @@
         "notes": "Poet + genre (ritha) — should retrieve elegies attributed to Al-Hassawi"
       },
       "is_refusal": true,
-      "elapsed_ms": 13021.256207954139,
-      "crag_verdict": "Correct",
+      "elapsed_ms": 20723.262374987826,
+      "crag_verdict": "Incorrect",
       "citations_used": [],
       "rrf_top5_anchor_ids": [
+        "manuscript12_p378_r024c0",
+        "manuscript05_p301_r042c0",
         "",
-        "manuscript05_p301_r051c0",
-        "maai7103_poem0085_qa_v1990",
-        "maai7103_poem0094_qa_v0507",
-        "maai7103_poem0082_qa_v0997",
-        "manuscript05_p304_r016c0",
-        "manuscript10_p1_r044c0",
-        "maai7103_poem0085_qa_v1992",
-        "manuscript12_p378_r025c0",
-        "reference_desert_culture_p031_para03",
-        "maai7103_poem0085_qa_v2002",
-        "manuscript18_p26_r021c0",
-        "manuscript19_p25_v021",
-        "maai7103_poem0085_qa_v2004",
-        "maai7103_poem0093_qa_v2853",
-        "601-782_p180_r008c0",
-        "maai7103_poem0082_qa_v0998",
-        "maai7103_poem0085_qa_v1991",
-        "manuscript10_p3_r026c0",
-        "maai7103_poem0025_sa_v0005"
+        "manuscript04_p59_r016c0",
+        "manuscript06_p250_r047c0",
+        "manuscript22_p20_v013",
+        "manuscript19_p25_v005",
+        "manuscript06_p50_v009",
+        "manuscript07_p50_v008",
+        "manuscript07_p20_v002",
+        "manuscript19_p5_v006",
+        "manuscript21_p8_v014",
+        "manuscript06_p250_r009c0",
+        "manuscript22_p2_r018c0",
+        "601-782_p179_r017c0",
+        "manuscript06_p255_r011c0",
+        "manuscript03_p30_v013",
+        "manuscript21_p20_v008",
+        "ecssr_8563_b76",
+        "ecssr_8563_b75"
       ]
     },
     {
@@ -634,30 +647,30 @@
         "notes": "Maritime theme — cross-manuscript semantic search"
       },
       "is_refusal": true,
-      "elapsed_ms": 12656.623082933947,
+      "elapsed_ms": 12327.295333030634,
       "crag_verdict": "Ambiguous",
       "citations_used": [],
       "rrf_top5_anchor_ids": [
-        "maai7103_poem0053_om_v1735",
-        "maai7103_poem0068_ku_v1404",
-        "601-782_p179_r004c1",
-        "maai7103_poem0068_ku_v1405",
-        "maai7103_poem0107_bh_v0042",
-        "manuscript21_p2_r023c0",
-        "maai7103_poem0004_em_v2948",
-        "manuscript22_p40_v016",
-        "maai7103_poem0068_ku_v1406",
-        "maai7103_poem0096_qa_v0248",
-        "maai7103_poem0041_sa_v2500",
-        "maai7103_poem0068_ku_v1398",
-        "manuscript05_p303_r023c0",
-        "maai7103_poem0096_qa_v0293",
-        "maai7103_poem0102_bh_v3029",
-        "maai7103_poem0068_ku_v1399",
-        "manuscript10_p1_r034c0",
-        "maai7103_poem0030_sa_v2589",
-        "maai7103_poem0086_qa_v0486",
-        "maai7103_poem0068_ku_v1400"
+        "manuscript03_p87_r026c0",
+        "manuscript22_p55_v002",
+        "manuscript06_p252_r008c0",
+        "manuscript06_p252_r012c0",
+        "manuscript07_p35_v014",
+        "aldiwan_110704_b08",
+        "aldiwan_110695_b15",
+        "aldiwan_137030_b61",
+        "aldiwan_137023_b13",
+        "ecssr_8538_b13",
+        "aldiwan_137030_b73",
+        "ecssr_7571_b01",
+        "ecssr_9102_b05",
+        "aldiwan_110695_b14",
+        "aldiwan_110695_b13",
+        "aldiwan_137030_b17",
+        "aldiwan_137026_b10",
+        "ecssr_8538_b12",
+        "ecssr_8538_b11",
+        "ecssr_9843_b08"
       ]
     },
     {
@@ -677,30 +690,30 @@
         "notes": "Abstract concept — interpretive intent should trigger HyDE"
       },
       "is_refusal": true,
-      "elapsed_ms": 19476.980000035837,
-      "crag_verdict": "Incorrect",
+      "elapsed_ms": 16591.187292011455,
+      "crag_verdict": "Ambiguous",
       "citations_used": [],
       "rrf_top5_anchor_ids": [
+        "manuscript08_p15_v011",
         "",
-        "maai7103_poem0005_em_v1458",
-        "manuscript22_p55_v012",
-        "reference_ibn_khaldoun_p004_para05",
-        "maai7103_poem0019_em_v1301",
-        "maai7103_poem0080_ku_v1659",
-        "manuscript10_p1_r032c0",
-        "reference_ibn_khaldoun_p021_para03",
-        "maai7103_poem0091_qa_v2720",
-        "reference_ibn_khaldoun_p018_para03",
-        "601-782_p182_r026c0",
-        "maai7103_poem0093_qa_v2853",
-        "maai7103_poem0056_om_v1622",
-        "reference_ibn_khaldoun_p017_para04",
-        "maai7103_poem0011_em_v0712",
-        "reference_ibn_khaldoun_p001_para01",
-        "maai7103_poem0063_om_v2808",
-        "reference_ibn_khaldoun_p021_para02",
-        "manuscript10_p1_r027c0",
-        "reference_ibn_khaldoun_p001_para02"
+        "manuscript18_p25_r019c1",
+        "manuscript06_p250_r023c0",
+        "manuscript12_p379_r024c0",
+        "601-782_p178_r001c0",
+        "manuscript22_p3_r007c0",
+        "manuscript04_p59_r018c0",
+        "manuscript05_p301_r031c0",
+        "aldiwan_147413",
+        "aldiwan_99816",
+        "ecssr_9164_b05",
+        "aldiwan_1065_b39",
+        "ecssr_9647_b09",
+        "ecssr_11758_b08",
+        "aldiwan_967_b03",
+        "ecssr_11756_b26",
+        "ecssr_11756_b51",
+        "aldiwan_99818_b03",
+        "ecssr_9524_b06"
       ]
     },
     {
@@ -720,13 +733,32 @@
         "gold_page": null,
         "notes": "Celebratory theme — should return verse-level chunks"
       },
-      "is_refusal": false,
-      "elapsed_ms": 32.264916924759746,
-      "crag_verdict": "Correct",
-      "citations_used": [
-        "manuscript_registry.json"
-      ],
-      "rrf_top5_anchor_ids": []
+      "is_refusal": true,
+      "elapsed_ms": 15546.561166993342,
+      "crag_verdict": "Ambiguous",
+      "citations_used": [],
+      "rrf_top5_anchor_ids": [
+        "manuscript06_p255_r021c0",
+        "manuscript21_p20_v014",
+        "manuscript05_p70_v012",
+        "manuscript19_p15_v027",
+        "manuscript06_p250_r017c0",
+        "manuscript07_p8_v010",
+        "manuscript05_p304_r031c0",
+        "manuscript22_p55_v002",
+        "manuscript22_p40_v016",
+        "manuscript08_p15_v018",
+        "manuscript12_p377_r041c0",
+        "manuscript03_p50_v006",
+        "aldiwan_110697_b08",
+        "aldiwan_967_b20",
+        "aldiwan_137031_b04",
+        "ecssr_8538_b43",
+        "ecssr_9103_b07",
+        "ecssr_8538_b42",
+        "ecssr_8538_b41",
+        "reference_ibn_khaldoun_p018_para04"
+      ]
     },
     {
       "fixture": {
@@ -745,31 +777,33 @@
         "gold_page": null,
         "notes": "Natural imagery — broad interpretive search across corpus"
       },
-      "is_refusal": true,
-      "elapsed_ms": 9569.804167025723,
-      "crag_verdict": "Ambiguous",
-      "citations_used": [],
+      "is_refusal": false,
+      "elapsed_ms": 23430.040334002115,
+      "crag_verdict": "Correct",
+      "citations_used": [
+        "manuscript18_p26_r019c0"
+      ],
       "rrf_top5_anchor_ids": [
-        "maai7103_poem0020_em_v3070",
-        "maai7103_poem0064_om_v0432",
-        "reference_desert_culture_p031_para03",
-        "reference_suloom_alarab_p001_para02",
-        "maai7103_poem0006_em_v2553",
-        "manuscript03_p87_r026c0",
-        "maai7103_poem0064_om_v0431",
-        "manuscript06_p252_r051c0",
-        "maai7103_poem0064_om_v0430",
-        "maai7103_poem0065_ku_v3042",
-        "maai7103_poem0031_sa_v1324",
-        "maai7103_poem0089_qa_v1730",
-        "maai7103_poem0031_sa_v1327",
-        "manuscript07_p8_v021",
-        "manuscript05_p305_r014c0",
-        "maai7103_poem0036_sa_v2160",
-        "manuscript10_p1_r007c0",
-        "maai7103_poem0043_sa_v2970",
-        "maai7103_poem0058_om_v1017",
-        "maai7103_poem0013_em_v0094"
+        "manuscript18_p26_r019c0",
+        "manuscript22_p55_v014",
+        "manuscript12_p379_r031c0",
+        "manuscript21_p50_v008",
+        "manuscript03_p87_r042c0",
+        "manuscript06_p253_r018c0",
+        "601-782_p179_r024c1",
+        "manuscript12_p379_r029c0",
+        "manuscript06_p251_r021c0",
+        "manuscript06_p253_r042c0",
+        "manuscript01_p70_r016c0",
+        "manuscript05_p304_r040c0",
+        "manuscript12_p379_r030c0",
+        "manuscript06_p250_r015c0",
+        "manuscript12_p378_r026c0",
+        "manuscript08_p15_v015",
+        "601-782_p178_r021c0",
+        "manuscript06_p30_v003",
+        "aldiwan_137030_b17",
+        "ecssr_9526_b05"
       ]
     },
     {
@@ -790,32 +824,30 @@
         "notes": "Ghazal subgenre — dense retrieval should distinguish from romantic ghazal"
       },
       "is_refusal": true,
-      "elapsed_ms": 34641.01150003262,
-      "crag_verdict": "Correct",
-      "citations_used": [
-        "reference_desert_culture_p031_para03"
-      ],
+      "elapsed_ms": 18038.174459012225,
+      "crag_verdict": "Incorrect",
+      "citations_used": [],
       "rrf_top5_anchor_ids": [
         "manuscript07_p8_v015",
-        "reference_desert_culture_p041_para03",
-        "",
-        "maai7103_poem_new_02_v3211",
         "manuscript21_p2_r017c0",
-        "reference_ibn_khaldoun_p004_para05",
-        "maai7103_poem0093_qa_v2856",
-        "reference_desert_culture_p031_para03",
-        "maai7103_poem0026_sa_v2321",
-        "reference_semiotics_p028_para05",
         "manuscript05_p304_r050c0",
-        "reference_ibn_khaldoun_p022_para01",
-        "maai7103_poem0072_ku_v0215",
-        "reference_ibn_khaldoun_p017_para04",
-        "maai7103_poem0014_em_v2387",
-        "reference_ibn_khaldoun_p001_para01",
-        "maai7103_poem0036_sa_v2172",
-        "reference_ibn_khaldoun_p002_para01",
-        "maai7103_poem0027_sa_v0767",
-        "reference_ibn_khaldoun_p018_para03"
+        "",
+        "manuscript07_p20_v001",
+        "601-782_p182_r021c0",
+        "601-782_p178_r027c0",
+        "manuscript15_p133_v004",
+        "manuscript05_p303_r050c0",
+        "manuscript04_p59_r024c0",
+        "manuscript05_p301_r034c0",
+        "manuscript06_p255_r043c0",
+        "manuscript19_p5_v005",
+        "manuscript05_p70_v001",
+        "aldiwan_1065_b08",
+        "ecssr_9527_b14",
+        "ecssr_9986_b07",
+        "aldiwan_99818_b13",
+        "ecssr_8563_b21",
+        "aldiwan_137030_b25"
       ]
     },
     {
@@ -831,30 +863,30 @@
         "notes": "Dialectal lexicography question — should surface al_mantuq variant in response"
       },
       "is_refusal": true,
-      "elapsed_ms": 10840.06345900707,
+      "elapsed_ms": 13971.715374966152,
       "crag_verdict": "Ambiguous",
       "citations_used": [],
       "rrf_top5_anchor_ids": [
-        "maai7103_poem0062_om_v0889",
-        "reference_ibn_khaldoun_p001_para02",
-        "maai7103_poem0046_sa_v0111",
-        "reference_ibn_khaldoun_p017_para04",
-        "manuscript19_p40_v023",
-        "reference_ibn_khaldoun_p001_para01",
-        "maai7103_poem0033_sa_v1449",
-        "reference_ibn_khaldoun_p023_para01",
-        "maai7103_poem0041_sa_v2477",
-        "reference_ibn_khaldoun_p022_para02",
-        "manuscript18_p26_r037c0",
-        "reference_ibn_khaldoun_p002_para01",
-        "maai7103_poem_new_02_v3201",
-        "reference_ibn_khaldoun_p019_para02",
-        "maai7103_poem0068_ku_v1378",
-        "reference_ibn_khaldoun_p022_para01",
-        "manuscript21_p3_r010c0",
-        "reference_ibn_khaldoun_p021_para02",
-        "maai7103_poem0051_om_v2350",
-        "reference_ibn_khaldoun_p024_para02"
+        "manuscript08_p15_v003",
+        "601-782_p182_r027c0",
+        "601-782_p182_r005c0",
+        "manuscript06_p253_r039c0",
+        "manuscript14_p113_v010",
+        "manuscript06_p254_r012c0",
+        "manuscript10_p1_r042c0",
+        "manuscript06_p250_r011c0",
+        "manuscript05_p305_r015c0",
+        "manuscript06_p252_r042c0",
+        "manuscript10_p1_r041c0",
+        "601-782_p179_r025c1",
+        "manuscript07_p8_v019",
+        "aldiwan_1088_b24",
+        "ecssr_7293_b03",
+        "aldiwan_1066_b26",
+        "aldiwan_110695_b32",
+        "ecssr_9828_b06",
+        "aldiwan_137028_b19",
+        "aldiwan_110695_b03"
       ]
     }
   ],
@@ -869,7 +901,7 @@
         "notes": "Classic Abbasid poet not in anchor_registry_phase4"
       },
       "is_refusal": true,
-      "elapsed_ms": 14160.209291963838
+      "elapsed_ms": 19643.859790987335
     },
     {
       "fixture": {
@@ -881,7 +913,7 @@
         "notes": "Famous classical poet with no entries in Phase-4 registry"
       },
       "is_refusal": true,
-      "elapsed_ms": 11015.622916980647
+      "elapsed_ms": 19640.165959019214
     },
     {
       "fixture": {
@@ -893,7 +925,7 @@
         "notes": "Wrong time period and region"
       },
       "is_refusal": true,
-      "elapsed_ms": 14559.133208007552
+      "elapsed_ms": 12958.863541018218
     },
     {
       "fixture": {
@@ -905,7 +937,7 @@
         "notes": "Contemporary Arab poet, entirely different tradition and region"
       },
       "is_refusal": true,
-      "elapsed_ms": 0.40433299727737904
+      "elapsed_ms": 0.4077079938724637
     },
     {
       "fixture": {
@@ -917,7 +949,7 @@
         "notes": "Non-Arabic, non-Nabati source"
       },
       "is_refusal": true,
-      "elapsed_ms": 0.3214579774066806
+      "elapsed_ms": 0.35320897586643696
     },
     {
       "fixture": {
@@ -929,7 +961,7 @@
         "notes": "English language poet entirely outside scope"
       },
       "is_refusal": true,
-      "elapsed_ms": 30889.03570792172
+      "elapsed_ms": 14127.12208298035
     },
     {
       "fixture": {
@@ -941,7 +973,7 @@
         "notes": "Modern Arabic poet from wrong region and era"
       },
       "is_refusal": true,
-      "elapsed_ms": 7.917499984614551
+      "elapsed_ms": 1.2987080262973905
     },
     {
       "fixture": {
@@ -953,7 +985,7 @@
         "notes": "Wrong domain entirely"
       },
       "is_refusal": true,
-      "elapsed_ms": 0.45104103628546
+      "elapsed_ms": 0.7847920060157776
     },
     {
       "fixture": {
@@ -965,7 +997,7 @@
         "notes": "Fabricated manuscript ID — should trigger scoped refusal"
       },
       "is_refusal": false,
-      "elapsed_ms": 1029.4100421015173
+      "elapsed_ms": 1492.8223750321195
     },
     {
       "fixture": {
@@ -977,7 +1009,7 @@
         "notes": "Wrong language, wrong era, wrong tradition"
       },
       "is_refusal": true,
-      "elapsed_ms": 11185.362790944055
+      "elapsed_ms": 15167.55162505433
     },
     {
       "fixture": {
@@ -989,7 +1021,7 @@
         "notes": "Wrong genre even within Arabic tradition"
       },
       "is_refusal": true,
-      "elapsed_ms": 0.47241710126399994
+      "elapsed_ms": 0.867208931595087
     },
     {
       "fixture": {
@@ -1001,7 +1033,7 @@
         "notes": "Not a poetry retrieval task at all"
       },
       "is_refusal": true,
-      "elapsed_ms": 0.37337501998990774
+      "elapsed_ms": 0.7773330435156822
     },
     {
       "fixture": {
@@ -1013,7 +1045,7 @@
         "notes": "Wrong region and era, though 'إرادة الحياة' is famous"
       },
       "is_refusal": true,
-      "elapsed_ms": 0.3598328912630677
+      "elapsed_ms": 0.7122081005945802
     },
     {
       "fixture": {
@@ -1025,7 +1057,7 @@
         "notes": "Guardrail (b) should fire: no verbatim verse in approved passage set could be cited"
       },
       "is_refusal": true,
-      "elapsed_ms": 14109.639165923
+      "elapsed_ms": 18297.92166594416
     },
     {
       "fixture": {
@@ -1037,7 +1069,7 @@
         "notes": "Wrong region"
       },
       "is_refusal": true,
-      "elapsed_ms": 10881.324041052721
+      "elapsed_ms": 32035.256166011095
     },
     {
       "fixture": {
@@ -1049,7 +1081,7 @@
         "notes": "Wrong language"
       },
       "is_refusal": true,
-      "elapsed_ms": 31272.62599999085
+      "elapsed_ms": 15688.706750050187
     },
     {
       "fixture": {
@@ -1061,7 +1093,7 @@
         "notes": "Famous but outside scope"
       },
       "is_refusal": true,
-      "elapsed_ms": 0.44620793778449297
+      "elapsed_ms": 0.43620902579277754
     },
     {
       "fixture": {
@@ -1073,7 +1105,7 @@
         "notes": "Fabricated contemporary reference — should trigger scoped refusal"
       },
       "is_refusal": true,
-      "elapsed_ms": 15941.101874923334
+      "elapsed_ms": 19499.69308299478
     },
     {
       "fixture": {
@@ -1085,7 +1117,7 @@
         "notes": "Nobel laureate but not Nabati poetry"
       },
       "is_refusal": true,
-      "elapsed_ms": 1.4489589957520366
+      "elapsed_ms": 0.4348750226199627
     },
     {
       "fixture": {
@@ -1097,7 +1129,7 @@
         "notes": "Wrong civilization, language, and era"
       },
       "is_refusal": true,
-      "elapsed_ms": 0.7988750003278255
+      "elapsed_ms": 0.31724991276860237
     }
   ]
 }
