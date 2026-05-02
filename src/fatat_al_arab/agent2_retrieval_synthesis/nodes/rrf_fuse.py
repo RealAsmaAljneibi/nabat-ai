@@ -44,8 +44,8 @@ SOFT_BOOST    = 1.5     # multiplicative score boost when soft filter matches
 # on BM25/dense for thematic queries but should not outrank primary manuscript
 # verse content. These multipliers ensure primary manuscripts always rank first
 # unless the corpus genuinely has no relevant content.
-SOURCE_WEIGHT_REFERENCE  = 0.35  # scholarly PDFs — context only, not primary verse
-SOURCE_WEIGHT_SECONDARY  = 0.65  # MAAI7103 oral / online secondary sources
+SOURCE_WEIGHT_REFERENCE  = 0.30  # scholarly PDFs — context only, not primary verse
+SOURCE_WEIGHT_SECONDARY  = 0.45  # MAAI7103 oral / online secondary sources
 SOURCE_WEIGHT_PRIMARY    = 1.0   # primary manuscripts — no change
 
 

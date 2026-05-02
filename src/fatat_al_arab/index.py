@@ -826,6 +826,7 @@ def load_index(
         "chunk_id", "rrf_score", "text", "level", "anchor_id", "poet_name",
         "source_volume", "source_page", "source_image_path",
         "manuscript_short_key", "genre", "genre_confidence", "genre_source", "emotions",
+        "source_type", "data_tier", "is_secondary_source", "parent_poem_id", "poem_matla",
     }
     chunks = [
         ScoredChunk(
@@ -844,7 +845,13 @@ def load_index(
             genre_confidence=float(d.get("genre_confidence", 0.0)),
             genre_source=d.get("genre_source", ""),
             emotions=list(d.get("emotions") or []),
-            # Pass through any extra fields (manuscript, poet, era, genre, emotion levels)
+            # Source provenance fields — needed for _apply_source_weights in rrf_fuse
+            source_type=d.get("source_type", ""),
+            data_tier=d.get("data_tier", "primary"),
+            is_secondary_source=bool(d.get("is_secondary_source", False)),
+            parent_poem_id=d.get("parent_poem_id", ""),
+            poem_matla=d.get("poem_matla", ""),
+            # Pass through any remaining extra fields
             extra={k: v for k, v in d.items() if k not in _CORE_FIELDS},
         )
         for d in chunk_dicts

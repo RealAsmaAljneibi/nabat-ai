@@ -61,12 +61,13 @@ _COUNTING_CUES = [
     r"\bnumber of\b",
     r"\btotal (number of|count of)?\b",
     r"\bsize of (the )?(corpus|collection|dataset)\b",
-    # Arabic (MSA + Khaleeji)
-    r"كم(\s+عدد)?",          # كم / كم عدد
+    # Arabic (MSA + Khaleeji) — word-bounded to prevent matching inside longer words
+    # e.g. r"كم" would falsely match inside "الحكمة" without \b
+    r"\bكم\b(\s+عدد)?",      # كم / كم عدد
     r"شو\s+عدد",             # شو عدد (Khaleeji)
-    r"كمية",                 # كمية
-    r"عدد\s+",               # عدد X
-    r"مجموع\s+",             # مجموع X
+    r"\bكمية\b",             # كمية
+    r"\bعدد\s+",             # عدد X (word-bounded so "بعدد" doesn't match)
+    r"\bمجموع\s+",           # مجموع X
 ]
 
 _AGE_CUES = [
@@ -671,6 +672,31 @@ def _intent_router_node_impl(state: AgentState) -> AgentState:
             # corpus_stats.count_poems_by_genre and to ground the LLM prose pass.
             "intent_genre":         verdict.get("genre"),
         }
+        state["query_context"] = new_qc  # type: ignore[assignment]
+        return state
+
+    # ── Check 4b: content-query veto (fires BEFORE prototype router) ─────────
+    # Why this check exists: the Tier 2 prototype router (TF-IDF / AraBERT) can
+    # match "ما هي أبيات الحكمة" (what are the wisdom verses) to a
+    # count_poems_by_genre prototype because char-n-gram overlap with "كم عدد
+    # أبيات الحكمة" is high. These are not counting questions — they are thematic
+    # retrieval questions. The veto fires on clear content-seeking signals and
+    # forces rag_pipeline so the prototype router never gets a chance to misroute.
+    _CONTENT_VETO_PATTERNS = [
+        r"ابحث\s+عن",                          # "I'm searching for"
+        r"أريد\s+(أن\s+)?(أجد|أعرف|أرى|أعثر)",  # "I want to find/know/see"
+        r"هل\s+(يوجد|توجد|هناك)",              # "is there / do you have"
+        r"(ما\s+هي|ما\s+هو)\s+(أشعار|قصائد|أبيات|أفضل)",  # "what are the poems/verses"
+        r"(أشعار|قصائد)\s+.{1,50}(في|من)\s+(المخطوطات|الديوان|التراث)",  # "poems of X in manuscripts"
+        r"\b(find|search|look for|show me|give me)\s+(poems?|verses?|qasidas?|bayts?)\b",
+        r"\bwhat (are|were) (the )?(poems?|verses?|qasidas?) (about|on|in|from)\b",
+    ]
+    if _any_match(_CONTENT_VETO_PATTERNS, raw_query):
+        logger.debug(
+            "intent_router: content-query veto fired — skipping prototype router, "
+            "routing to rag_pipeline."
+        )
+        new_qc = {**qc, "answer_source": "rag_pipeline"}
         state["query_context"] = new_qc  # type: ignore[assignment]
         return state
 

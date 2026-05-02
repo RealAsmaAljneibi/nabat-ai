@@ -11,9 +11,10 @@ Design decisions:
      at module level. Re-loading the 13 MB embedding matrix per query would
      add ~200 ms on every call.
 
-  2. Hard filters applied BEFORE scoring — filtering 4,500 → N chunks before
-     BM25/dense scoring is faster and more correct than post-hoc filtering,
-     because BM25 score normalisation changes with corpus size.
+  2. Hard filters — BM25 uses post-hoc filtering on its top-50 results so the
+     full-corpus BM25Retriever can be cached (see bm25.get_bm25_retriever).
+     Dense still pre-filters because it needs a sub-matrix slice aligned to
+     the filtered chunk list; rebuilding the dense retriever per query is cheap.
 
   3. §5 failure budget — each retriever call is wrapped in try/except. A timed-
      out or crashed retriever is logged as dropped; the other two still contribute
@@ -23,6 +24,12 @@ Design decisions:
      for dense retrieval (it's a hypothetical verse that matches the style of
      what we're looking for). BM25 always uses the raw Arabic query terms.
 
+  5. M5b parallel retrieval — BM25, Dense, and ColBERT are independent so they
+     run concurrently via ThreadPoolExecutor(max_workers=3). Wall-clock latency
+     drops from sum(t_bm25 + t_dense + t_colbert) to max(t_bm25, t_dense, t_colbert).
+     Each callable returns (results, timing_ms) and catches its own exceptions so
+     the §5 failure-budget semantics are preserved.
+
 Architecture refs: §2.5 Stage 4 (Triple Hybrid Retrieval), §5 (failure budgets).
 """
 
@@ -30,6 +37,7 @@ from __future__ import annotations
 
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from fatat_al_arab.index import IndexBundle, load_index, DEFAULT_QDRANT
@@ -167,6 +175,14 @@ def retrieve_node(state: AgentState) -> AgentState:
     dense_results:   list[dict] = []
     colbert_results: list[dict] = []
 
+    # Build a BM25 query that combines the raw Arabic query, any Arabic
+    # paraphrases from bilingual_expand, and the HyDE hypothetical verse.
+    # Why: BM25 is a bag-of-words model — more Arabic surface forms = better
+    # token coverage over the Nabati lexicon without changing the retriever.
+    ar_variants: list[str] = list(qc.get("query_variants_ar") or [])[:3]
+    hyde_snippet = (hyde_passage or "")[:400]  # cap so BM25 tokeniser stays fast
+    bm25_query = " ".join(filter(None, [query_ar] + ar_variants + [hyde_snippet]))
+
     try:
         bundle = _get_index()
         all_chunks = bundle.chunks
@@ -181,58 +197,65 @@ def retrieve_node(state: AgentState) -> AgentState:
             )
             filtered_chunks = all_chunks
 
-        # -- BM25 retrieval --
-        try:
-            from fatat_al_arab.retrievers.bm25 import BM25Retriever
-            t0 = time.perf_counter()
-            bm25_retriever = BM25Retriever(filtered_chunks)
-            bm25_chunks = bm25_retriever.retrieve(query_ar, n=20)
-            timings["bm25_ms"] = round((time.perf_counter() - t0) * 1000, 1)
-            bm25_results = _chunks_to_dicts(bm25_chunks)
-        except Exception as exc:
-            logger.warning("retrieve_node: BM25 failed: %s", exc)
-            dropped.append("bm25")
-            timings["bm25_ms"] = -1
+        # Pre-compute the filtered embedding sub-matrix here (sequential; needs
+        # bundle.embeddings which is not thread-safe to slice concurrently).
+        import numpy as np
+        chunk_id_to_idx = {c.chunk_id: i for i, c in enumerate(bundle.chunks)}
+        filtered_indices = [
+            chunk_id_to_idx[c.chunk_id]
+            for c in filtered_chunks
+            if c.chunk_id in chunk_id_to_idx
+        ]
+        filtered_embeddings = bundle.embeddings[filtered_indices]
+        # Use HyDE passage for dense if available (richer semantic signal)
+        dense_query = hyde_passage or query_ar
 
-        # -- Dense retrieval --
-        try:
+        # ── M5b: parallel retrieval callables ────────────────────────────────
+        # The three retrieval legs are independent; running them concurrently
+        # reduces wall-clock latency from sum to max of their individual times.
+        # Each callable returns (results: list[dict], timing_ms: float) and
+        # raises on hard failure so the caller can mark the retriever as dropped.
+
+        def _run_bm25() -> tuple[list[dict], float]:
+            from fatat_al_arab.retrievers.bm25 import get_bm25_retriever
+            t0 = time.perf_counter()
+            retriever = get_bm25_retriever(bundle.chunks)
+            # Fetch 50 from the full corpus; apply hard filters post-hoc so
+            # the full-corpus retriever can be reused across queries.
+            raw = retriever.retrieve(bm25_query, n=50)
+            chunks = _apply_hard_filters(raw, filters_hard)[:20]
+            return _chunks_to_dicts(chunks), round((time.perf_counter() - t0) * 1000, 1)
+
+        def _run_dense() -> tuple[list[dict], float]:
             from fatat_al_arab.retrievers.dense import DenseRetriever
-            import numpy as np
-
-            # Build a filtered embedding sub-matrix by index alignment
-            # (filtered_chunks is a subset of bundle.chunks; find original indices)
-            chunk_id_to_idx = {c.chunk_id: i for i, c in enumerate(bundle.chunks)}
-            filtered_indices = [
-                chunk_id_to_idx[c.chunk_id]
-                for c in filtered_chunks
-                if c.chunk_id in chunk_id_to_idx
-            ]
-            filtered_embeddings = bundle.embeddings[filtered_indices]
-
-            # Use HyDE passage for dense if available (richer semantic signal)
-            dense_query = hyde_passage or query_ar
             t0 = time.perf_counter()
-            dense_retriever = DenseRetriever(filtered_chunks, filtered_embeddings)
-            dense_chunks = dense_retriever.retrieve(dense_query, n=20)
-            timings["dense_ms"] = round((time.perf_counter() - t0) * 1000, 1)
-            dense_results = _chunks_to_dicts(dense_chunks)
-        except Exception as exc:
-            logger.warning("retrieve_node: Dense failed: %s", exc)
-            dropped.append("dense")
-            timings["dense_ms"] = -1
+            chunks = DenseRetriever(filtered_chunks, filtered_embeddings).retrieve(dense_query, n=20)
+            return _chunks_to_dicts(chunks), round((time.perf_counter() - t0) * 1000, 1)
 
-        # -- ColBERT retrieval (stub) --
-        try:
+        def _run_colbert() -> tuple[list[dict], float]:
             from fatat_al_arab.retrievers.colbert import ColBERTRetriever
             t0 = time.perf_counter()
-            colbert_retriever = ColBERTRetriever(filtered_chunks)
-            colbert_chunks = colbert_retriever.retrieve(query_ar, n=20)
-            timings["colbert_ms"] = round((time.perf_counter() - t0) * 1000, 1)
-            colbert_results = _chunks_to_dicts(colbert_chunks)
-        except Exception as exc:
-            logger.warning("retrieve_node: ColBERT failed: %s", exc)
-            dropped.append("colbert")
-            timings["colbert_ms"] = -1
+            chunks = ColBERTRetriever(filtered_chunks).retrieve(query_ar, n=20)
+            return _chunks_to_dicts(chunks), round((time.perf_counter() - t0) * 1000, 1)
+
+        _jobs = {"bm25": _run_bm25, "dense": _run_dense, "colbert": _run_colbert}
+        with ThreadPoolExecutor(max_workers=3) as _pool:
+            _futures = {_pool.submit(fn): name for name, fn in _jobs.items()}
+            for fut in as_completed(_futures):
+                name = _futures[fut]
+                try:
+                    results, elapsed = fut.result()
+                    timings[f"{name}_ms"] = elapsed
+                    if name == "bm25":
+                        bm25_results = results
+                    elif name == "dense":
+                        dense_results = results
+                    else:
+                        colbert_results = results
+                except Exception as exc:
+                    logger.warning("retrieve_node: %s failed: %s", name, exc)
+                    dropped.append(name)
+                    timings[f"{name}_ms"] = -1
 
     except Exception as exc:
         logger.error("retrieve_node: index load failed: %s", exc)
