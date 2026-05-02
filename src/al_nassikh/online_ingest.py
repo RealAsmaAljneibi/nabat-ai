@@ -94,7 +94,7 @@ def _get(url: str, timeout: int = 10) -> Optional[str]:
         import requests  # soft dependency
         headers = {
             "User-Agent": (
-                "NABAT-AI/1.0 Academic Research Bot — "
+                "NABAT-AI/1.0 Academic Research Bot - "
                 "Khaleeji poetry digitisation project, MAAI1704. "
                 "Contact: asljneibi@scad.gov.ae"
             ),
