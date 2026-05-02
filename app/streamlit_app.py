@@ -380,6 +380,53 @@ def _track_spinner_msg(track: str) -> str:
     }.get(track, "📜 Fatat Al-Arab is searching manuscripts… / فتاة العرب تبحث في المخطوطات…")
 
 
+_RECIPES: list[dict] = [
+    {
+        "label": "🏛️ Sheikh Zayed poetry",
+        "query": "أعطني شعر الشيخ زايد عن الوطن",
+        "hint":  "ECSSR corpus · UAE leadership verse",
+    },
+    {
+        "label": "🌍 Cross-lingual search",
+        "query": "poems about longing for the homeland",
+        "hint":  "English → Arabic retrieval",
+    },
+    {
+        "label": "📖 غزل — Ibn Yahya",
+        "query": "ابحث عن أبيات الغزل في مخطوطة ابن يحيى",
+        "hint":  "Genre filter + manuscript resolver",
+    },
+    {
+        "label": "🗂️ How many manuscripts?",
+        "query": "كم مخطوطة في الأرشيف؟",
+        "hint":  "Al-Nassikh deterministic answer",
+    },
+]
+
+
+def _render_recipe_cards() -> None:
+    """
+    Why this exists: the demo panel needs to see capabilities immediately.
+    Four clickable pill cards — each targets a distinct pipeline path
+    (ECSSR corpus, cross-lingual, genre filter, Al-Nassikh registry lookup).
+    Clicking sets session_state["recipe_query"] and reruns the page;
+    the submit gate below picks it up like a typed query.
+    """
+    st.markdown('<div class="recipe-row">', unsafe_allow_html=True)
+    cols = st.columns(len(_RECIPES))
+    for col, recipe in zip(cols, _RECIPES):
+        with col:
+            if st.button(
+                f"{recipe['label']}\n_{recipe['hint']}_",
+                key=f"recipe_{recipe['label']}",
+                use_container_width=True,
+                help=recipe["query"],
+            ):
+                st.session_state["recipe_query"] = recipe["query"]
+                st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
 def render_chat_composer() -> tuple[str, Optional[object], bool]:
     """
     Unified chat composer using st.chat_input with built-in 🎤 mic + 📎 attach.
@@ -1075,12 +1122,22 @@ def _render_workbench() -> None:
         unsafe_allow_html=True,
     )
 
+    # ── Recipe cards — quick-start prompts for the demo panel ─────────────────
+    _render_recipe_cards()
+
     # ── 3. Query composer ─────────────────────────────────────────────────────
     # st.chat_input with accept_file + accept_audio — icons render inside the
     # input box. Returns (query_text, pending_image, should_process).
     composer_text, pending_image, send_clicked = render_chat_composer()
 
     # ── 4. Submit gate ─────────────────────────────────────────────────────────
+    # Recipe cards set session_state["recipe_query"] on click — treat it exactly
+    # like a typed submission so the full pipeline runs.
+    _recipe_q = st.session_state.pop("recipe_query", None)
+    if _recipe_q:
+        send_clicked  = True
+        composer_text = _recipe_q
+
     if not send_clicked:
         # Nothing submitted — fall through to answer display
         pass
@@ -2526,6 +2583,32 @@ section[data-testid="stSidebar"] .stButton button {
 }
 
 /* ── Query composer card ───────────────────────────────────────────────────── */
+/* ── Recipe cards ──────────────────────────────────────────────────────────── */
+.recipe-row {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  justify-content: center;
+  margin: 0 auto 20px; max-width: 760px;
+}
+/* Streamlit buttons inside .recipe-row look like chips */
+.recipe-row div[data-testid="stButton"] > button {
+  background: rgba(255,255,255,0.72) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 999px !important;
+  padding: 6px 16px !important;
+  font-size: 13px !important;
+  color: var(--ink2) !important;
+  white-space: normal !important;
+  text-align: left !important;
+  line-height: 1.35 !important;
+  transition: background 0.15s, border-color 0.15s !important;
+  box-shadow: 0 1px 3px rgba(74,56,42,0.08) !important;
+}
+.recipe-row div[data-testid="stButton"] > button:hover {
+  background: var(--ink) !important;
+  color: var(--paper) !important;
+  border-color: var(--ink) !important;
+}
+
 .composer-card {
   background: var(--paper2);
   border: 1px solid var(--line);
