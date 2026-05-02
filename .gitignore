@@ -32,7 +32,6 @@ poetry_folder_survey.txt
 
 # IDE / AI assistant local config
 .claude/
-CLAUDE.md
 
 # Large manuscript source files (data already extracted to data/ground_truth/)
 manuscripts/
@@ -46,3 +45,8 @@ data/qdrant/qdrant_storage/
 
 # eScriptorium source clone (separate git repo — not a submodule)
 infra/escriptorium/escriptorium-src/
+
+# Exam preparation notes (personal, not for submission)
+doc/FINAL_PREP.md
+doc/RUBRIC.md
+doc/AI_USAGE_REFLECTION.md
