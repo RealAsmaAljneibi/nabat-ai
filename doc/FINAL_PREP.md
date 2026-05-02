@@ -539,6 +539,134 @@ What the system does NOT claim to solve:
 
 ---
 
+### "The National Project Office is interested in multi-agentic systems. How can your work support that vision for Arabic poetry?"
+
+**The short answer:** NABAT-AI is already a multi-agent system — but it is scoped to one researcher's corpus. The architecture was deliberately designed so every boundary (the agent contract, the registry schema, the tool ecosystem) can scale to a national institution without re-engineering the core.
+
+---
+
+**What already maps to a national deployment**
+
+The three-worker architecture is not an academic pattern — it is an institutional pattern:
+
+| Worker | Current scope | National scale equivalent |
+|---|---|---|
+| **Al-Nassikh (الناسخ)** — ETL Worker | Digitises 25 manuscripts in one corpus | Each archive (National Archives, ECSSR, Sharjah Book Authority, MBR Library) runs its own Al-Nassikh instance for its own collection |
+| **Fatat Al-Arab (فتاة العرب)** — RAG Pipeline | Queries one Qdrant index | A federated Fatat Al-Arab queries across all institutional indexes via a shared API layer |
+| **Orchestrator** | Single-institution entry point | National API gateway: `POST /query` routes to the correct institutional shard or fan-outs across all |
+
+The `QueryContext` TypedDict in `state.py` already functions as an **inter-agent message protocol**. At national scale it becomes the inter-institution data contract — every institution's Al-Nassikh produces registry entries in the same schema, and every Fatat Al-Arab can query any of them.
+
+---
+
+**Five new specialist agents the NPO could commission**
+
+The current system has three workers. A national Arabic poetry platform would add:
+
+| Agent | Arabic Name | Role |
+|---|---|---|
+| **Provenance Agent** | الوراق — Al-Warraq | Tracks manuscript lineage: which collector acquired it, when, where. Cross-references colonial-era expedition records (Huber, Socin) with contemporary UAE holdings. Answers "how did this manuscript reach the National Archives?" |
+| **Comparison Agent** | المقابلة — Al-Muqabala | Given a verse, finds all manuscripts in the national corpus that contain a textual variant of it. Shows side-by-side variants with spelling differences highlighted — critical for establishing authoritative text. |
+| **Prosody Agent** | العروض — Al-Arruz | Analyses Nabati metre (وزن) and rhyme (قافية). Identifies which of the 16 classical Arabic metres a bayt follows, flags metrically anomalous verses for human review. Currently impossible without this agent because Tashkeel is stripped in retrieval. |
+| **Translation Agent** | المترجم — Al-Mutarjim | Produces scholarly English translations of retrieved verses with cultural glosses. Bridges UAE heritage scholarship to the international academic community. |
+| **Correction Agent** | المصحح — Al-Musahhih | When two manuscripts contain the same poem with different transcriptions, it cross-validates them and surfaces the discrepancy for human arbitration. Reduces silent errors in the national registry. |
+
+---
+
+**The concrete proposal for the NPO**
+
+1. **Standardise Al-Nassikh's registry schema** as a national UAE manuscript metadata standard. Any institution that follows the schema can onboard without custom integration.
+2. **Run federated Qdrant shards** — one per institution, one shared national index for cross-corpus queries.
+3. **Expose the orchestrator as a RESTful national API** — `POST /query` accepts `{query, institution_scope, lang}`. Research institutions, schools, and cultural apps all consume the same endpoint.
+4. **Commission Al-Muqabala first** — the textual-variants use case is the highest scholarly value and lowest-risk starting point. It uses the existing retrieval infrastructure and adds only a comparison layer.
+5. **UAE identity integration** — the ECSSR Leadership Encyclopedia poems (Sheikh Zayed, MBZ, MBR, Hamdan) already in the corpus connect heritage scholarship directly to national leadership voice. This is the most compelling demo for a government audience.
+
+**What to say to the NPO representative:**
+
+> "The architecture was built with this in mind. The reason the agent communication goes through a formal TypedDict contract — not direct function calls — is that this contract can become an API. The reason Al-Nassikh is a separate worker from Fatat Al-Arab is that different institutions can run their own Al-Nassikh. What I've built is version one of the data standard and the query interface. The National Project Office would be scaling the infrastructure, not redesigning the system."
+
+**Code to point at:** `src/fatat_al_arab/state.py` (the protocol) · `src/fatat_al_arab/orchestrator.py` (the API layer) · `data/ground_truth/manuscript_registry.json` (the shareable schema) · `data/online_corpus/` (ECSSR integration already done)
+
+---
+
+### "Your system strips Tashkeel for retrieval — but Nabati poetry's meaning, metre, and recitation all depend on it. Isn't this destroying the scholarly value of the corpus?"
+
+This question goes deeper than the retrieval trade-off. It asks whether the system is fundamentally unsuitable for serious Nabati scholarship.
+
+**Acknowledge the genuine tension first**
+
+Tashkeel (التشكيل) — the short-vowel diacritics — is not decoration in Nabati poetry. It carries three layers of information the current system loses:
+
+| Layer | What Tashkeel encodes | Impact of stripping |
+|---|---|---|
+| **Phonological** | How the verse sounds when recited (the performed form) | Al-Mantuq output cannot be generated accurately — the system guesses pronunciation |
+| **Metrical** | Which syllables are long/short — determines which of the 16 Arabic metres the bayt follows | The system cannot identify metre at all. A غزل in البسيط metre looks identical to one in الكامل |
+| **Semantic** | Disambiguates homographs: `عِلم` (knowledge) vs `عَلَم` (flag) vs `عَلِم` (he knew) | Rare retrieval errors where the system returns the wrong sense |
+
+So yes — stripped Tashkeel is a real limitation.
+
+**Why the trade-off was made — and why it was the right call for this stage**
+
+Two facts make full Tashkeel retention impractical right now:
+
+1. **The source manuscripts are inconsistently diacritised.** Many of the 25 handwritten manuscripts in this corpus were written without Tashkeel or with partial marking — this is normal in historical Arabic manuscripts. If the source text has none, preserving it in the index adds no information.
+
+2. **Retrieval recall requires stripping.** A researcher who types `الوطن` (no diacritics, as almost all Arabic keyboard users type) must find a verse that reads `الوَطَن` in the manuscript. Normalising both to the same form is not a choice — it is a prerequisite for usable retrieval.
+
+**What a Tashkeel-aware system would look like**
+
+This is the honest answer of what the next version requires:
+
+1. **Tashkeel restoration layer** — a model like Mishkal or Farasa that adds predicted Tashkeel to the stripped query before dense encoding. This closes the phonological gap without requiring users to type diacritics.
+2. **Dual index** — store both the stripped form (for recall) and the diacritised form (for display and metrical analysis). Retrieve on stripped, render the original.
+3. **Prosody Agent (Al-Arruz)** — takes the diacritised form and runs computational Arabic prosody analysis (tools like `aruziyy` exist as research code). Adds metre labels to each bayt.
+4. **Scholar-corrected Tashkeel layer** — in eScriptorium, the human reviewer who corrects Kraken's draft can also add diacritics. This is the gold-standard source, not a model prediction.
+
+**What to say:**
+
+> "Stripping Tashkeel was a deliberate retrieval trade-off — recall over metrical precision — and it is documented with the 🔸 flag. For a system aimed at recitation or prosody, you would add a Tashkeel restoration layer before encoding and a prosody agent after retrieval. The architecture already has the slot for that agent — it is the next node after `resolve_heritage`. What I did not do is pretend the limitation doesn't exist: the three output variants include al-Mantuq specifically to flag that the spoken form requires a diacritised source to be accurate."
+
+**Code to point at:** `src/fatat_al_arab/embed.py:_HARAKAT` (where stripping happens) · `src/fatat_al_arab/agent2_retrieval_synthesis/nodes/format_variants.py` (al-Mantuq output) · `src/fatat_al_arab/agent2_retrieval_synthesis/nodes/resolve_heritage.py` (where a Tashkeel restoration step would be inserted)
+
+---
+
+### "Nabati poetry uses Khaleeji dialect — but your system uses AraBERT and standard Arabic tools. What dictionary or lexicon does your system use for dialectal Arabic, and what happens when a term isn't in any standard dictionary?"
+
+This is a question about **out-of-vocabulary (OOV) dialectal vocabulary** — words that appear in Nabati poetry but exist in no formal Arabic dictionary.
+
+**The honest answer: there is no Khaleeji dialect dictionary in the system**
+
+There is no published, comprehensive machine-readable lexicon for Khaleeji Nabati dialect. The resources that exist are:
+- Ibn Khamis's *Mu'jam Al-Alfaz Al-Ammiyya* (معجم الألفاظ العامية) — covers Najdi dialect, partial Khaleeji
+- Gaps: specific Nabati poetic idioms, archaic Gulf tribal terminology, loanwords from Farsi/Hindi/Swahili that entered the Gulf lexicon through trade
+
+This is not a gap in the system — it is a gap in the field.
+
+**How the system handles dialectal terms without a dictionary — three mechanisms**
+
+**Mechanism 1 — AraPoemBERT's implicit dialect knowledge**
+The embedding model (AraPoemBERT, trained on 2M+ Arabic poetry verses) has implicit distributional knowledge of dialectal Nabati vocabulary — not from a dictionary, but from co-occurrence patterns in the training corpus. When the model encodes `يبه` (Khaleeji for "I want him/it") it places it near semantically similar MSA terms because it has seen them used in parallel contexts. This is imperfect but functional.
+
+**Mechanism 2 — Dialect detection + corpus-grounded expansion**
+`bilingual_analyzer.py` detects Khaleeji markers: `فدوة، بعد، يبه، هيه، ذا، چذا، ابشر، ياهل، خبر، يوه، زين، قبال`. When dialect is detected, `bilingual_expand.py` generates query paraphrases that include both the dialectal form and its MSA equivalent — effectively acting as an on-the-fly translator without a static dictionary.
+
+**Mechanism 3 — `resolve_heritage.py` as a living dialect layer**
+Stage 6 (`resolve_heritage.py`) swaps the MSA-normalised retrieval text back to the Khaleeji form stored in the manuscript anchor. This means the user sees `يبه` in the answer, not `يريده` — the dialectal register is preserved in output even if retrieval normalised it. The anchor registry is itself the dialect resource: 2,222 verse entries transcribed directly from manuscripts are 2,222 data points of live Khaleeji usage.
+
+**What the right long-term solution looks like**
+
+1. **A corpus-derived Khaleeji glossary** — extract high-frequency terms from the 2,222 verse registry that do not appear in Buckwalter or Hans Wehr, annotate them with MSA equivalents and semantic fields. The corpus is large enough to bootstrap this automatically.
+2. **Dialect-aware tokenisation** — tools like CAMeL Tools (New York University Abu Dhabi) have a Gulf dialect tokeniser. Replacing the generic Arabic tokeniser in BM25 with CAMeL's Khaleeji tokeniser would significantly improve sparse retrieval on dialectal terms.
+3. **Link to existing Nabati scholarship** — Al-Jubouri's *Shi'r Al-Nabati* and Al-Rubayi's glossary appendices contain partial dialectal lexicons. These could be ingested as reference chunks (the `reference_ingest.py` pipeline already exists for this).
+
+**What to say:**
+
+> "There is no comprehensive Khaleeji Nabati dictionary — in a machine-readable form, it doesn't exist yet, which is one reason this corpus is valuable. The system works around the gap in three ways: AraPoemBERT's implicit dialect knowledge from training, on-the-fly bilingual expansion that bridges dialectal queries to MSA equivalents, and the resolve_heritage node that preserves the original Khaleeji register in every answer. The 2,222 verse entries in the registry are themselves a dialect resource — a structured corpus of live Nabati usage. A future extension would extract a Khaleeji glossary directly from this corpus and replace the generic Arabic tokeniser with CAMeL Tools' Gulf dialect tokeniser."
+
+**Code to point at:** `src/fatat_al_arab/agent1_query_understanding/nodes/bilingual_analyzer.py` (dialect detection markers) · `src/fatat_al_arab/agent2_retrieval_synthesis/nodes/resolve_heritage.py` (Khaleeji text swap) · `src/fatat_al_arab/embed.py` (normalisation before encoding) · `src/al_nassikh/reference_ingest.py` (how scholarly references would be added)
+
+---
+
 ## Quick Reference — Key Files for the Final
 
 | Question topic | Go to |
