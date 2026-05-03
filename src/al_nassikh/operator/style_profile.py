@@ -7,6 +7,7 @@ inter-line, rounded forms) vs CALLIGRAPHIC (variable baseline, decorative
 ligatures) vs HURR (unconstrained personal hand). The style tag drives two
 downstream decisions: (a) which Kraken fine-tune to use in Stage 6, and
 (b) which diacritics-sharpening parameters to pass to Stage 2 (standardise).
+Where it's called: tests. Purpose: Identifies script style (NASKH vs RUQAH) from sample pages
 
 Algorithm:
   - Inter-line spacing: estimated from horizontal projection profile valley depths.

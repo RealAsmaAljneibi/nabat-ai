@@ -19,8 +19,8 @@
 #          LLM_PROVIDER=groq
 #          LLM_API_KEY=<paste key here>
 #
-#   No other API keys are needed to run the Scholar Workbench (Tab B).
-#   eScriptorium (Tab A / Archive Manager) uses a local Docker container,
+#   No other API keys are needed to run the Scholar Workbench (Tab A).
+#   eScriptorium (Tab B / Archive Manager) uses a local Docker container,
 #   not an external API — it works without any key at all.
 #
 #   If you don't have a key yet, set LLM_PROVIDER=stub for an offline
@@ -36,8 +36,9 @@ langgraph>=0.2.0
 langchain-core>=0.2.0
 
 # ── LLM providers (hosted API — no local GPU) ────────────────────────
-together>=1.2.0          # Together.ai (primary: Qwen2.5-7B)
-groq>=0.9.0              # Groq (alternative provider)
+openai>=1.30.0           # OpenAI — GPT-4o-mini primary / GPT-4o fallback (recommended)
+together>=1.2.0          # Together.ai — Qwen2.5-7B (free tier alternative)
+groq>=0.9.0              # Groq — fast inference (free tier alternative)
 
 # ── Embedding + retrieval ─────────────────────────────────────────────
 sentence-transformers>=3.0.0   # GATE-AraBERT-v1 dense embeddings
@@ -69,6 +70,12 @@ plotly>=5.22.0                 # ColBERT token heatmap + retrieval score charts
 # ── Testing ───────────────────────────────────────────────────────────
 pytest>=8.2.0
 pytest-asyncio>=0.23.0
+
+# ── MCP server (exposes NABAT-AI as a tool to Claude Desktop / Claude Code) ──
+mcp>=1.0.0                     # Model Context Protocol Python SDK — src/nabat_mcp_server.py
+
+# ── HTTP client (poet bio enrichment — Wikipedia + Brave Search) ──────
+httpx>=0.27.0                  # Used by poet_enrichment.py; also a transitive dep of together SDK
 
 # ── PDF ingestion (Al-Nassikh ingest pipeline) ────────────────────────
 pypdf>=4.2.0                   # PDF metadata + page count

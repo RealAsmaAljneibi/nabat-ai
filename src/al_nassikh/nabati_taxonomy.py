@@ -6,7 +6,9 @@ Why this file exists: The genre + emotion enrichment pass (M2d) classifies
 classifier invocation invents its own labels (حماسة vs. فخر vs. بطولة all mean
 roughly the same thing), and the retrieval facet UI ends up with 40
 near-duplicate buttons instead of 10 clean ones. Freezing the label space
-*before* any classifier runs is the single biggest lever on output quality.
+*before* any classifier runs is the single biggest lever on output quality. 
+Where it's called: genre_heuristic.py → app. Purpose: Frozen valid label list — 10 genres + 10 emotions. Prevents hallucinated tags
+
 
 The taxonomy below is grounded in three sources:
   1. Sowayan's own classification of Najdi Nabati (7 genres + war narrative)

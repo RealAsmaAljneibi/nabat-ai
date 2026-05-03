@@ -8,6 +8,8 @@ Published Khaleeji poems that are already in digital form can be indexed
 without the Kraken HTR + eScriptorium step — they are treated as
 "already digitised" and fed directly into the same Qdrant pipeline.
 
+Where it's called: scripts/build_unified_registry.py. Purpose: Ingests online-digitized corpus into the unified registry  
+
 This expands the retrieval corpus and demonstrates the agentic system's
 ability to reason across heterogeneous source types.
 

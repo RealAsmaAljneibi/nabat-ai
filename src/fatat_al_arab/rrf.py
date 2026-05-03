@@ -5,6 +5,9 @@ Why this file exists: M3 Stage 3 — Reciprocal Rank Fusion (RRF) merges
 independent ranked lists from BM25, dense, and ColBERT retrievers into a
 single ranked list without requiring score calibration between retrievers.
 
+When triggered: Inside rrf_fuse_node after Stage 5 retrieval.
+Purpose: ScoredChunk dataclass + RRF (k=60) + 1.25× verse-level boost so exact verses outrank aggregate chunks
+
 Formula: RRF(d) = Σ_r  1 / (k + rank_r(d))
   k=60 is the standard constant from Cormack et al. 2009. It dampens the
   advantage of the top position — a rank-1 result gets 1/61 ≈ 0.016, rank-2

@@ -7,6 +7,7 @@ Why this file exists: Khaleeji Nabati poetry uses vocabulary, negation patterns,
 and question markers that differ significantly from Modern Standard Arabic (MSA).
 A query typed in Khaleeji dialect (e.g. "وين الغيث") will fail BM25 matching
 against manuscripts indexed with MSA normalisation (e.g. "أين المطر").
+Where it's called: agent1/tools.py (live query), testsPurpose: Khaleeji dialect bridging — maps dialect words to MSA for better retrieval
 
 This module provides:
   1. A curated bilingual lexicon: Khaleeji term → MSA equivalent → English gloss.

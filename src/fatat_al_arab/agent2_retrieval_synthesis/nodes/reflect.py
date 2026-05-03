@@ -7,6 +7,9 @@ the LLM evaluates its own draft against three quality axes:
   - Relevance:      does the response actually answer the user's query?
   - Completeness:   does it address all aspects the passages support?
 
+When triggered: Stage 9 — after synthesise
+Purpose: Self-RAG critic: scores faithfulness + relevance + completeness (1-5 each); emits fix_instructions for surgical retry; SKIPS on refusal + GK fallback paths.
+
 Why self-evaluation (not a separate judge model): at demo scale one extra LLM
 call is acceptable. A second judge model would require a second API key and
 doubles the latency. The self-evaluation prompt is written to be adversarial
@@ -34,15 +37,17 @@ import logging
 from typing import Any
 
 from fatat_al_arab.llm import chat
+from fatat_al_arab.personas import FATAT_PERSONA
 from fatat_al_arab.state import AgentState
 
 logger = logging.getLogger(__name__)
 
-SELF_RAG_MAX_RETRIES = 2   # §5
+SELF_RAG_MAX_RETRIES = 1   # §5 — capped at 1 for demo latency
 
-_SYSTEM_REFLECTOR = """\
-You are Fatat Al-Arab (فتاة العرب — The Arabian Scholar), NABAT-AI's bilingual \
-Khaleeji Nabati poetry expert, acting as your own strict quality reviewer.
+_SYSTEM_REFLECTOR = (
+    FATAT_PERSONA
+    + """\
+Acting as your own strict quality reviewer.
 Task — Stage 9 (Self-RAG Reflection): evaluate the draft response against the \
 original query and the source passages.
 
@@ -64,6 +69,7 @@ completeness:  the response covers all aspects the passages can support.
 Be strict — a score of 0.9 means near-perfect. Typical good responses score 0.7–0.85.
 Return ONLY valid JSON.
 """
+)
 
 
 def _call_reflector(query_ar: str, draft: str, passages: list[dict]) -> dict:
@@ -152,6 +158,19 @@ def reflect_node(state: AgentState) -> AgentState:
                                   "completeness": 1.0, "pass": True, "issues": []},
             "self_rag_verdict": "pass",
             "agent_trace": trace_append(state, stage="9", icon="🪞", label="Self-RAG Reflection", summary="Skipped — refusal path"),
+        }
+
+    # M9: skip reflection on general-knowledge fallback path — the answer is
+    # by design NOT grounded in passages, so faithfulness/completeness checks
+    # would all fail. The 🌐 badge already tells the user it's outside corpus.
+    if state.get("general_knowledge_fallback"):
+        return {
+            **state,
+            "self_rag_scores":  {"faithfulness": 1.0, "relevance": 1.0,
+                                  "completeness": 1.0, "pass": True, "issues": []},
+            "self_rag_verdict": "pass",
+            "agent_trace": trace_append(state, stage="9", icon="🪞", label="Self-RAG Reflection",
+                                         summary="Skipped — general-knowledge fallback (🌐 outside corpus)"),
         }
 
     qc = state.get("query_context") or {}

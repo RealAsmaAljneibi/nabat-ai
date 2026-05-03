@@ -6,6 +6,8 @@ Scholars and enthusiasts often *recite* or *hum* a verse before they can write i
 and searching for a half-remembered poem by voice is far more natural than typing
 Arabic on a keyboard. This module converts a recorded or uploaded audio file into
 a text query the RAG pipeline can process.
+When triggered: When user clicks the mic icon in Streamlit composer.
+Purpose: Whisper transcription of voice query → text.
 
 Model used: Whisper-small fine-tuned on Arabic poetry ASR, loaded from
 ~/poetry/models/local/whisper-small/ — the same checkpoint trained in the

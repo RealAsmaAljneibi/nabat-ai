@@ -6,6 +6,9 @@ the folio is Challenge 3 in the architecture doc. It manifests as faint mirrored
 text overlaid on the recto, which confuses Kraken's baseline detector into
 splitting real text lines or hallucinating extra baselines. The filter here
 estimates and subtracts the background component without touching the ink.
+Where it's called: app Tab B (live), tests
+Purpose: Removes ghost ink from
+reverse-page bleed-through
 
 Algorithm:
   1. Detect whether bleed-through is present (std-dev check on bright region).

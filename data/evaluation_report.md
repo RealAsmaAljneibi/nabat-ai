@@ -1,9 +1,9 @@
 # NABAT-AI — Evaluation Report
-## §7 Four-Axis Evaluation
+## §7 Five-Axis Evaluation
 
-**Generated:** 2026-05-02 05:52 UTC
-**LLM provider:** `together`
-**Fixture counts:** 20 in-corpus · 20 OOC · 20 bilingual
+**Generated:** 2026-05-02 20:13 UTC
+**LLM provider:** `openai`
+**Fixture counts:** 20 in-corpus · 20 OOC · 20 bilingual · 20 extension
 
 ---
 
@@ -27,16 +27,16 @@
 |---|---|---|---|
 | Citation-resolvability rate | 100.0% | 100% | ✅ |
 | Recall@5 exact (gold anchor_id match) | 15.4% | ≥ 75% | ❌ |
-| Recall@5 relaxed (correct manuscript) | 76.9% | ≥ 75% | ✅ |
-| Refusal precision (OOC set, n=20) | 95.0% | ≥ 90% | ✅ |
+| Recall@5 relaxed (correct manuscript) | 46.2% | ≥ 75% | ❌ |
+| Refusal precision (OOC set, n=20) | 80.0% | ≥ 90% | ❌ |
 
 **CRAG verdict distribution** (in-corpus queries):
 
 | Verdict | Count |
 |---|---|
+| Correct | 10 |
 | Ambiguous | 9 |
-| Correct | 8 |
-| Incorrect | 3 |
+| Incorrect | 1 |
 
 > **Recall@5 exact**: at least one gold anchor_id (exact page+row) appears in the top-20 retrieved chunks.
 > **Recall@5 relaxed**: at least one retrieved chunk is from the correct manuscript (same anchor_id prefix).
@@ -49,9 +49,9 @@
 
 | Mechanism | Activation rate | Raw count / 60 queries |
 |---|---|---|
-| CRAG re-query (Loop A+B) | 33.3% | 20 |
-| Self-RAG retry (Loop C) | 11.7% | 7 |
-| Self-RAG budget exhaustion (2 retries used) | 8.3% | — |
+| CRAG re-query (Loop A+B) | 10.0% | 6 |
+| Self-RAG retry (Loop C) | 10.0% | 6 |
+| Self-RAG budget exhaustion (2 retries used) | 0.0% | — |
 | Fallback LLM (Qwen → Mistral switch) | 0.0% | — |
 | Retriever drop (800 ms timeout) | 0.0% | — |
 
@@ -65,17 +65,17 @@
 
 | Metric | Result | Target | Status |
 |---|---|---|---|
-| p50 end-to-end latency | 14419 ms | < 4,000 ms | ❌ |
-| p95 end-to-end latency | 29373 ms | < 8,000 ms | ❌ |
-| Mean latency | 13207 ms | — | — |
+| p50 end-to-end latency | 29576 ms | < 4,000 ms | ❌ |
+| p95 end-to-end latency | 44707 ms | < 8,000 ms | ❌ |
+| Mean latency | 22468 ms | — | — |
 | Sample size | 60 queries | — | — |
 
 ### Per-stage average latency
 
 | Stage | Avg latency |
 |---|---|
-| `agent1_ms` | 5586 ms |
-| `agent2_ms` | 7621 ms |
+| `agent1_ms` | 5896 ms |
+| `agent2_ms` | 16572 ms |
 
 > In stub mode all LLM calls return in < 1 ms (deterministic canned responses),
 > so reported latencies reflect Python overhead only. Live API latencies will be
@@ -87,8 +87,7 @@
 
 ## Axis 4 — Human Judgment
 
-*A Nabati poetry scholar will review a 15-response sample and score each on three
-5-point Likert axes. The table below is the scaffold to be filled in offline.*
+*A 15-response sample scored on three 5-point Likert axes.*
 
 ### Likert axes
 
@@ -98,20 +97,21 @@
 | Dialect Fidelity | Khaleeji register is authentic (not MSA-flattened) | ≥ 3.5 / 5 |
 | Usefulness | Response would satisfy a researcher or enthusiast | ≥ 3.5 / 5 |
 
-### Sample responses (first 3 of 2)
+### Sample responses (first 3 of 12)
 
 | Query ID | Response snippet | Faithfulness | Dialect Fidelity | Usefulness |
 |---|---|---|---|---|
-| sq13 | يحتوي السجل الرسمي على **25** مخطوطة. منها **15** مخطوطة تحتوي على فهرس (جدول محتويات) قابل للقراءة، وتم استخراج بياناته… | — | — | — |
-| sq18 | كيف وصف شعراء الخليج القمر في قصائدهم؟
+| sq01 | تتضمن قصائد الخيل في الشعر النبطي الخليجي تعبيرات قوية عن الفخر والشجاعة. من بين هذه القصائد، نجد البيت الذي يقول:
 
-يظهر في بعض قصائد الشعر النبطي الخليجي وصف القمر بوصفه مرتبطًا بالحزن أو الغياب.… | — | — | — |
+"بال… | *(pending)* | *(pending)* | *(pending)* |
+| sq05 | وجدت **35** قصائد محتملة عن رثاء أو حزن على ابن/بنت/طفل. من الشعراء الظاهرين في هذه المطابقة: غير محدد، حمود العبيد، ابن… | *(pending)* | *(pending)* | *(pending)* |
+| sq06 | مطلع قصيدة المهادي في وصف الناقة هو:
 
-> **Fill in:** a Khaleeji Nabati poetry expert reviews the full 15-response sample
-> in `data/evaluation_raw.json` under the `human_judgment.responses` key and
-> records scores + notes per response. Aggregate means are updated in this report.
+"يقول المهادي والمهادي مهمل // له عبرة باقي الملا ما دروا بها" [anchor_id:manuscri… | *(pending)* | *(pending)* | *(pending)* |
 
-**Current aggregate (pending scholar review):**
+> **Full sample:** see `data/evaluation_raw.json` → `human_judgment.responses`.
+
+**Current aggregate:**
 
 | Axis | Mean score |
 |---|---|
@@ -119,23 +119,62 @@
 | Dialect Fidelity | *(pending)* |
 | Usefulness | *(pending)* |
 
+
+
+## Axis 5 — Extensions · EXT-1…EXT-9
+
+**Fixture set:** 20 queries
+(`tests/fixtures/extension_queries.jsonl`)
+
+| Metric | Result | Target | Status | n |
+|---|---|---|---|---|
+| Fast-path rate (EXT-8 registry_lookup) | 100.0% | ≥ 90% | ✅ | 3 |
+| Dialect answer rate (EXT-1 bridge) | 75.0% | ≥ 50% | ✅ | 4 |
+| Source routing accuracy (EXT-2/3/8) | 0.0% | ≥ 50% | ❌ | 10 |
+| Genre filter answer rate (M3) | 25.0% | ≥ 50% | ❌ | 8 |
+| Overall extension answer rate | 40.0% | — | — | 20 |
+
+> **Fast-path rate:** registry_lookup queries (كم عدد, كم شاعراً…) must return
+> via the deterministic fast-path — `guardrail_flags` contains `"registry_lookup"` and
+> no LLM call is made. Target ≥ 90%.
+>
+> **Dialect answer rate:** queries using Khaleeji dialect terms (وش, شلون, يبون, الديرة…)
+> should resolve to answers after EXT-1 normalisation, not be refused. Target ≥ 50%.
+>
+> **Source routing accuracy:** queries targeting `online_digitized` or `oral_tradition`
+> sources should surface at least one chunk of the expected `source_type` in the
+> RRF top-5. Requires the index to be built from `data/unified_registry.json`.
+> If only the manuscript registry was indexed, source routing queries will score 0.
+>
+> **Genre filter answer rate:** queries naming an explicit genre (رثاء, فخر, مديح…)
+> should be answered (genre filter activated by self_query → Qdrant payload filter).
+
 ---
+
 
 ## Summary: Architecture Claims vs Reality
 
 | Architecture claim | Result | Honest verdict |
 |---|---|---|
 | Citation-resolvability 100% (§2.9 guardrail a) | 100.0% | ✅ Met in stub mode — live test pending |
-| Recall@5 exact ≥ 75% (§5 scholar set) | 15.4% | ⚠️ Below target — relaxed (manuscript-level) = 76.9% |
-| Refusal precision ≥ 90% (§2.9 guardrail c) | 95.0% | ✅ Met |
-| p50 < 4 s (§7 efficiency) | 14419 ms | ⚠️ Stub latency above 4 s — unexpected, check overhead |
-| p95 < 8 s (§7 efficiency) | 29373 ms | ⚠️ Check p95 with live API |
+| Recall@5 exact ≥ 75% (§5 scholar set) | 15.4% | ⚠️ Below target — relaxed (manuscript-level) = 46.2% |
+| Recall@5 relaxed ≥ 75% (correct manuscript) | 46.2% | ⚠️ Below target |
+| Refusal precision ≥ 90% (§2.9 guardrail c) | 80.0% | ⚠️ Below target — check OOC query routing |
+| p50 < 4 s (§7 efficiency) | 29576 ms | ⚠️ Stub latency above 4 s — unexpected, check overhead |
+| p95 < 8 s (§7 efficiency) | 44707 ms | ⚠️ Check p95 with live API |
+| Fast-path ≥ 90% (EXT-8 registry_lookup) | 100.0% | ✅ Met |
+| Dialect bridge ≥ 50% (EXT-1) | 75.0% | ✅ Met |
+| Source routing ≥ 50% (EXT-2/3/8) | 0.0% | ⚠️ Rebuild index from unified_registry.json |
 
 > **Note on stub mode:** the stub LLM returns deterministic canned responses that
 > always trigger the is_refusal path. This means citation-resolvability and
 > Recall@5 are measured on the guardrail-refusal template, not a real synthesis.
 > Run `LLM_PROVIDER=together LLM_API_KEY=<key> python scripts/evaluate.py` for
 > live numbers that reflect the actual pipeline quality.
+>
+> **Note on source routing (Axis 5):** source routing metrics require the Qdrant
+> index to include oral_tradition and online_digitized chunks. Rebuild with:
+> `python scripts/rebuild_index.py --registry data/unified_registry.json --force`
 
 ---
 

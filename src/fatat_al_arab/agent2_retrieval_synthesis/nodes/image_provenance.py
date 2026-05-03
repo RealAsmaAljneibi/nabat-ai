@@ -6,6 +6,8 @@ Why this file exists: Before this node landed, an "upload an image and ask
 verse pictured was already in the corpus or not — the image path was stored
 in state but no downstream node ever consumed its pixels, and the typed
 meta-question had no retrieval signal of its own.
+When triggered: When user attached an image AND typed a meta-question ("who wrote this?").
+Purpose: Verse-level retrieval with elevated similarity threshold; returns cited identification or honest "not in corpus".
 
 The intent_router (Stage 0.5a) detects the {image attached + meta-question}
 combination and routes here. This node:

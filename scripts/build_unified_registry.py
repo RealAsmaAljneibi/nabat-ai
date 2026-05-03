@@ -59,7 +59,7 @@ _MS_REGISTRY      = _REPO_ROOT / "data" / "ground_truth" / "manuscript_registry.
 _POETS_BIO        = _REPO_ROOT / "data" / "ground_truth" / "poets_bio.json"
 _ONLINE_REGISTRY  = _REPO_ROOT / "data" / "online_corpus"  / "online_anchor_registry.json"
 _ORAL_REGISTRY    = _REPO_ROOT / "data" / "oral_tradition" / "oral_anchor_registry.json"
-_MAAI7103_CSV     = Path.home() / "poetry" / "data" / "processed" / "master_dataset.csv"
+_MAAI7103_CSV     = _REPO_ROOT / "data" / "master_dataset_full.xlsx"
 _OUTPUT           = _REPO_ROOT / "data" / "unified_registry.json"
 
 
@@ -296,21 +296,29 @@ def _map_emotion(emotion_en: str) -> str:
 
 def load_maai7103(csv_path: Path = _MAAI7103_CSV, min_quality: str = "") -> list[dict]:
     if not csv_path.exists():
-        logger.warning(f"MAAI7103 CSV not found at {csv_path} — skipping")
+        logger.warning(f"MAAI7103 dataset not found at {csv_path} — skipping")
         return []
 
+    # Support both CSV and Excel (.xlsx) — same column schema
+    raw_rows: list[dict] = []
+    if csv_path.suffix.lower() in (".xlsx", ".xls"):
+        import pandas as pd  # type: ignore[import]
+        df = pd.read_excel(csv_path, dtype=str).fillna("")
+        raw_rows = df.to_dict(orient="records")
+    else:
+        with open(csv_path, encoding="utf-8-sig") as f:
+            raw_rows = list(csv.DictReader(f))
+
     poem_groups: dict[str, list[dict]] = defaultdict(list)
-    with open(csv_path, encoding="utf-8-sig") as f:
-        for row in csv.DictReader(f):
-            quality = (row.get("audio_quality") or "").strip().lower()
-            if min_quality == "clean" and quality not in ("clean", ""):
-                continue
-            pid = (row.get("source_poem") or "").strip()
-            if pid:
-                poem_groups[pid].append(row)
+    for row in raw_rows:
+        quality = (row.get("audio_quality") or "").strip().lower()
+        if min_quality == "clean" and quality not in ("clean", ""):
+            continue
+        pid = (row.get("source_poem") or "").strip()
+        if pid:
+            poem_groups[pid].append(row)
 
     entries = []
-    seq = 0
     for poem_id, rows in poem_groups.items():
         if not rows:
             continue
@@ -319,61 +327,74 @@ def load_maai7103(csv_path: Path = _MAAI7103_CSV, min_quality: str = "") -> list
         poet_en    = (first.get("poet_en") or "").strip()
         genre_en   = (first.get("genre_en") or "").strip()
         genre_ar   = _map_genre(genre_en)
-        emotion_en = (first.get("emotion_text") or "").strip()
-        emotion_ar = _map_emotion(emotion_en)
         year       = (first.get("poem_date") or "").strip()
         title      = (first.get("poem_title") or "").strip()
 
-        # matla = first corrected verse of the poem
-        matla_text = ""
-        for r in rows:
-            t = (r.get("text_corrected") or "").strip()
-            if t and len(t) >= 5:
-                matla_text = t
-                break
+        # Collect all corrected verses in timestamp order, skip empty/noise rows
+        verse_texts: list[str] = []
+        translations: list[str] = []
+        imagery_tags: list[str] = []
+        emotions_ar:  list[str] = []
+        audio_files:  list[str] = []
 
-        for row in rows:
-            text = (row.get("text_corrected") or "").strip()
+        for r in rows:
+            text = (r.get("text_corrected") or "").strip()
             if not text or len(text) < 5:
                 continue
-            audio = (row.get("audio_filename") or "").strip()
-            start = row.get("start", "0")
-            end   = row.get("end", "0")
+            verse_texts.append(text)
+            tr = (r.get("translation_en") or "").strip()
+            if tr:
+                translations.append(tr)
+            im = (r.get("imagery_tags_en") or "").strip()
+            if im:
+                imagery_tags.append(im)
+            em = _map_emotion((r.get("emotion_text") or "").strip())
+            if em and em not in emotions_ar:
+                emotions_ar.append(em)
+            af = (r.get("audio_filename") or "").strip()
+            if af:
+                audio_files.append(af)
 
-            e = _entry(
-                anchor_id            = f"maai7103_{poem_id}_v{seq:04d}",
-                poet_ar              = poet_ar,
-                poet_en              = poet_en,
-                matla                = matla_text,
-                text                 = text,
-                year_approx          = year,
-                genre                = genre_ar,
-                data_tier            = "secondary",
-                source_type          = "oral_tradition",
-                source_volume        = poem_id,
-                source_page          = f"{start}-{end}ms",
-                source_image_path    = audio,
-                manuscript_short_key = "maai7103",
-                genre_confidence     = 0.9,
-                genre_source         = "maai7103_human_annotation",
-                emotions             = [emotion_ar] if emotion_ar else [],
-                source_collection    = "MAAI7103 oral tradition",
-                extra                = {
-                    "title":             title,
-                    "translation_en":    (row.get("translation_en") or "").strip(),
-                    "imagery_tags_en":   (row.get("imagery_tags_en") or "").strip(),
-                    "khaleeji_value_ar": (first.get("khaleeji_value_ar") or "").strip(),
-                    "audio_file":        audio,
-                    "maai7103_poem_id":  poem_id,
-                },
-            )
-            # Link each bayt back to its parent poem
-            e["parent_poem_id"] = poem_id
-            e["poem_matla"]     = matla_text
-            entries.append(e)
-            seq += 1
+        if not verse_texts:
+            continue
 
-    logger.info(f"MAAI7103 (secondary): {len(entries)} verse entries from {len(poem_groups)} poems  "
+        matla_text = verse_texts[0]
+        # Full poem = all corrected verses joined with newlines
+        full_poem_text = "\n".join(verse_texts)
+
+        e = _entry(
+            anchor_id            = f"maai7103_{poem_id}",
+            poet_ar              = poet_ar,
+            poet_en              = poet_en,
+            matla                = matla_text,
+            text                 = full_poem_text,
+            year_approx          = year,
+            genre                = genre_ar,
+            data_tier            = "secondary",
+            source_type          = "oral_tradition",
+            source_volume        = poem_id,
+            source_page          = poem_id,
+            source_image_path    = audio_files[0] if audio_files else "",
+            manuscript_short_key = "maai7103",
+            genre_confidence     = 0.9,
+            genre_source         = "maai7103_human_annotation",
+            emotions             = emotions_ar,
+            source_collection    = "MAAI7103 oral tradition",
+            extra                = {
+                "title":             title,
+                "verse_count":       len(verse_texts),
+                "translation_en":    " | ".join(translations),
+                "imagery_tags_en":   " | ".join(dict.fromkeys(imagery_tags)),  # deduped
+                "khaleeji_value_ar": (first.get("khaleeji_value_ar") or "").strip(),
+                "audio_files":       audio_files,
+                "maai7103_poem_id":  poem_id,
+            },
+        )
+        e["parent_poem_id"] = poem_id
+        e["poem_matla"]     = matla_text
+        entries.append(e)
+
+    logger.info(f"MAAI7103 (secondary): {len(entries)} full-poem entries  "
                 f"({sum(1 for e in entries if e['poet_en'])} with English poet name, "
                 f"{sum(1 for e in entries if e['year_approx'])} with year)")
     return entries

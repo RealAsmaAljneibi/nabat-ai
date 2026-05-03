@@ -6,6 +6,8 @@ recall by generating 3-5 Arabic paraphrases and 3-5 English paraphrases of the
 user's query. These variants are merged by the RRF fuser downstream, which means
 a thematically-phrased query in English can still surface a verse that only matches
 a more classical Arabic phrasing.
+When triggered: Stage 2b — runs after bilingual_analyzer.
+Purpose: Generates 3-5 AR + EN paraphrases of the query for multi-vector retrieval.
 
 This node is the first half of Stage 2; hyde.py handles the second half
 (HyDE — generating a hypothetical verse to use as a dense query seed).

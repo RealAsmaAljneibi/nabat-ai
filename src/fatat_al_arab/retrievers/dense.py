@@ -4,6 +4,8 @@ src/fatat_al_arab/retrievers/dense.py
 Why this file exists: Dense semantic retriever leg of the triple-hybrid
 pipeline. It computes cosine similarity between the query embedding and
 pre-built GATE-AraBERT chunk embeddings stored in memory.
+When triggered: Inside retrieve_node (Stage 4) — uses HyDE vector if available, else query vector.
+Purpose: AraBERT 768-dim cosine semantic search — strongest on thematic / paraphrase matches
 
 At demo scale (~4,500 chunks × 768-d vectors ≈ 13 MB float32) a brute-force
 numpy dot-product scan is fast enough: ~5ms on a laptop. We only switch to
@@ -18,10 +20,21 @@ Architecture decisions:
 
 from __future__ import annotations
 
+import functools
+
 import numpy as np
 
 from fatat_al_arab.embed import get_dense_embedding
 from fatat_al_arab.rrf import ScoredChunk
+
+
+# M5b embed cache — repeated identical queries (e.g. CRAG re-query with the same
+# HyDE passage, or back-to-back Streamlit calls) skip the model forward-pass.
+# maxsize=256 covers any realistic session without unbounded growth.
+@functools.lru_cache(maxsize=256)
+def _cached_encode(query: str) -> list:
+    """Return the dense embedding for *query*, caching by exact string."""
+    return get_dense_embedding(query)
 
 
 class DenseRetriever:
@@ -60,7 +73,7 @@ class DenseRetriever:
         Return top-n chunks by cosine similarity to *query*, descending.
         rrf_score is set to the raw cosine similarity so rrf.fuse() can rank.
         """
-        qvec = np.array(get_dense_embedding(query), dtype=np.float32)
+        qvec = np.array(_cached_encode(query), dtype=np.float32)
         norm = np.linalg.norm(qvec)
         if norm > 0:
             qvec /= norm

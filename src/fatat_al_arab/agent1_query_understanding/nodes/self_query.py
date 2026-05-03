@@ -6,6 +6,8 @@ language intent into typed Qdrant filters. Without this, every query does a full
 collection scan regardless of whether the user said "show me what Ibn Yahya wrote
 about the sea" — a constraint that could reduce the search space from 1,500 to
 ~80 candidates instantly.
+When triggered: Stage 3 — last Agent-1 node.
+Purpose: Typed filter extraction (poet · manuscript · genre · emotion · page/verse range); confidence ≥ 0.7 → hard filter, else soft.
 
 Two filter tiers (§M4 spec):
   - hard filters  (confidence ≥ 0.7): applied as Qdrant payload pre-filters

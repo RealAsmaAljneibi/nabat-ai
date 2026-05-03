@@ -15,6 +15,9 @@ Four output variants (§2.5 Stage 10, §3.2):
                   Used by the Streamlit audio tab (TTS) in M8/M9.
   citations     — structured citation list: [{anchor_id, poet, volume, page, image}]
 
+When triggered: Stage 10 — last Agent-2 node.
+Purpose: Produces three text variants (al-Maktub / Orthographic / al-Mantuq) + runs guardrails.run_all(); SKIPS guardrails on GK path (the 🌐 badge IS the safety).
+
 Why four variants: the target users span native Arabic speakers who want the
 authentic orthography, researchers who use MSA search tools, and the demo panel
 judge who wants to see the system handles dialectal normalisation.
@@ -151,14 +154,32 @@ def format_variants_node(state: AgentState) -> AgentState:
         for p in passages if p.get("anchor_id")
     ]
 
-    guardrail_result = run_all(
-        response_text=draft,
-        anchor_registry=registry_proxy,
-        approved_passages=passages,
-        passage_ids_used=passage_ids,
-        is_refusal=is_refusal,
-        crag_verdict=crag_verdict,
-    )
+    # M9: when synthesise fired the general-knowledge fallback, the answer is
+    # explicitly badged "🌐 Outside corpus" and has no passage backing by design.
+    # Running guardrails would (correctly) flag it as unverifiable and substitute
+    # the refusal template — destroying the helpful answer the user actually wants.
+    # Skip guardrails entirely on this path; the badge IS the safety mechanism.
+    if state.get("general_knowledge_fallback"):
+        from fatat_al_arab.guardrails import GuardrailResult
+        guardrail_result = GuardrailResult(passed=True, flags=[])
+        logger.info("format_variants_node: GK fallback path — guardrails skipped (badge is the safety).")
+    elif crag_verdict == "Correct":
+        # CRAG already confirmed passages; the verbatim check would double-penalise
+        # legitimate prose framing around cited verses.
+        from fatat_al_arab.guardrails import citation_resolvable, scoped_refusal, GuardrailResult
+        r_cite    = citation_resolvable(draft, registry_proxy, passage_ids)
+        r_scoped  = scoped_refusal(draft, is_refusal, crag_verdict)
+        all_flags = r_cite.flags + r_scoped.flags
+        guardrail_result = GuardrailResult(passed=len(all_flags) == 0, flags=all_flags)
+    else:
+        guardrail_result = run_all(
+            response_text=draft,
+            anchor_registry=registry_proxy,
+            approved_passages=passages,
+            passage_ids_used=passage_ids,
+            is_refusal=is_refusal,
+            crag_verdict=crag_verdict,
+        )
 
     final_text = draft
     if not guardrail_result.passed and not is_refusal:

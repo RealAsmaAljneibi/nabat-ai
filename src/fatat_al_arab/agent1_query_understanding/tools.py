@@ -6,6 +6,8 @@ restricted set of tools that Agent 1 is allowed to call. The restriction is not
 just documentation: importing this module registers the tools and makes any
 attempt to call a non-registered tool raise a ToolNotPermittedError at import
 time.
+When triggered: At import time of every node that imports this module.
+Purpose: Agent 1 tool registry (§2.9): translate_query, extract_filters, hyde_passage, expand_bilingual, khaleeji_dialect_bridge.
 
 Agent 1 tool registry (§2.9):
   translate_query         — EN↔AR translation via translate.py

@@ -7,7 +7,12 @@ Agent 2 (Retrieval & Synthesis). Both agents read from and write to these
 TypedDicts — if the schema drifts, the orchestrator breaks at the seam.
 Having one canonical definition here means any schema change is a one-line
 diff, visible in review.
+Where it's called: agent1/graph.py, agent2/graph.py, creative/graph.py
+Purpose: Defines the state contract between Agent 1 and Agent 2
 
+When triggered: At every node entry (read) and exit (write) — touched on every turn
+Purpose: Single source of truth for inter-agent contracts (QueryContext, AgentState, CompositionState TypedDicts + factories)
+────────────────────────────────────────────────────────────────────────────────
 Two state types:
   QueryContext  — Agent 1's output / Agent 2's input (§2.4 Step 6 output)
   AgentState    — full graph state that flows through both agents end-to-end
@@ -42,14 +47,20 @@ class QueryContext(TypedDict):
     # so the orchestrator can short-circuit without running bilingual_analyzer.
     answer_source:        NotRequired[str]         # "registry_lookup" | "rag_pipeline"
     deterministic_intent: NotRequired[Optional[str]]   # registry-lookup intent key
-    track:                NotRequired[str]         # "poetic_rag" | "capabilities" | "registry_lookup" | "instructor_debug" | "image_grounded_provenance"
+    track:                NotRequired[str]         # "poetic_rag" | "capabilities" | "registry_lookup" | "pipeline_debug" | "image_grounded_provenance"
     intent_genre:         NotRequired[Optional[str]] # canonical Arabic genre label set by intent_router for genre-aware counting
     intent_subintent:     NotRequired[Optional[str]]   # semantic router sub-intent
     intent_confidence_router: NotRequired[float]   # semantic router confidence (0-1)
     intent_alt_family:    NotRequired[Optional[str]]   # second-ranked track family
     intent_router_reasoning: NotRequired[Optional[str]] # router's reasoning text
-    router_source:        NotRequired[str]         # "regex" | "llm" | "default"
+    router_source:        NotRequired[str]         # "regex" | "prototype_arabert" | "prototype_tfidf" | "llm" | "default"
     router_cues:          NotRequired[list]        # regex cue IDs that fired
+    # Source bucket the router believes will best answer this query.
+    # Read by retrieve.py to filter the Qdrant payload by `source_type`, and by
+    # the answer-display layer to pick the right badge.
+    # Values: "manuscript_corpus" | "online_corpus" | "any_corpus"
+    #         | "poet_bio" | "corpus_stats" | "general_knowledge"
+    preferred_source:     NotRequired[Optional[str]]
 
     # ── Stage 1: Bilingual Analyzer ──────────────────────────────────
     query_lang:        str                  # "ar" | "en"
@@ -123,7 +134,7 @@ class AgentState(TypedDict):
     passage_ids_used:   NotRequired[list[str]]    # chunk_ids that were quoted
 
     # ── Agent 2 — Stage 9: Self-RAG Reflection ───────────────────────
-    self_rag_scores:    NotRequired[dict]         # {faithfulness, relevance, completeness}
+    self_rag_scores:    NotRequired[dict]         # {faithfulness, relevance, completeness, pass, issues, fix_instructions, failed_claims}
     self_rag_verdict:   NotRequired[str]          # "pass" | "retry" | "flag"
     self_rag_retries:   NotRequired[int]          # 0–2 (max 2 per §5)
 
@@ -137,6 +148,10 @@ class AgentState(TypedDict):
     # ── Final output ─────────────────────────────────────────────────
     final_response:     NotRequired[str]          # emitted to the UI
     is_refusal:         NotRequired[bool]         # True → "not in corpus" template fired
+    # M9: synthesise set this when it routed to the LLM general-knowledge fallback
+    # because the corpus didn't have the requested entity. format_variants reads
+    # it to skip guardrails (the 🌐 badge IS the safety mechanism on this path).
+    general_knowledge_fallback: NotRequired[bool]
 
     # ── Failure tracking (§5 failure-handling budget) ─────────────────
     # Why in state: the orchestrator reads these to decide whether to fire
@@ -157,8 +172,8 @@ class AgentState(TypedDict):
     # ── Multimodal input telemetry ───────────────────────────────────────
     input_modality:       NotRequired[str]   # "text" | "voice" | "image"
 
-    # ── Instructor debug snapshot (prior turn) ───────────────────────────
-    # Why here: the instructor_debug answer node reads the previous turn's
+    # ── Pipeline debug snapshot (prior turn) ────────────────────────────
+    # Why here: the pipeline_debug answer node reads the previous turn's
     # pipeline internals. The UI copies last_result into this field before
     # calling run_agent1 when the query looks like a debug/inspector request.
     debug_snapshot:       NotRequired[dict]  # copied from prior turn AgentState
@@ -227,10 +242,112 @@ def trace_append(state: dict, stage: str, icon: str, label: str, summary: str, d
     return current
 
 
+# ── CompositionContext ────────────────────────────────────────────────────────
+# Why a separate type from QueryContext: the creative pipeline has a fundamentally
+# different input contract — it takes composition parameters (mode, poet, occasion)
+# not a natural-language user query. Keeping it separate means the creative graph
+# can be tested in isolation from the RAG pipeline, exactly like QueryContext
+# lets Agent 2 be tested without running Agent 1.
+
+class CompositionContext(TypedDict):
+    """
+    Input contract for the creative composition pipeline (Agent 3 / Worker 4).
+    The orchestrator's run_creative() populates this and passes it to the graph.
+
+    mode selects which creative agent fires:
+      "scaffold"  → Al-Mulhim  — compositional scaffold for a living poet
+      "coauthor"  → Al-Musharik — ajuz candidates for an in-progress verse
+      "preserve"  → Al-Hafiz   — voice preservation for a deceased poet
+      "critique"  → Al-Muqayyim — quality critique of a submitted poem
+    """
+    mode:            str                        # required — one of the four values above
+    target_poet:     NotRequired[Optional[str]] # poet name used by Mulhim, Hafiz
+    genre:           NotRequired[Optional[str]] # Nabati genre from nabati_taxonomy.py
+    theme:           NotRequired[Optional[str]] # free-text topic / theme
+    occasion:        NotRequired[Optional[str]] # رثاء | مديح | غزل | وصف | فخر
+    input_sadr:      NotRequired[Optional[str]] # mode=coauthor: human's first hemistich
+    input_poem:      NotRequired[Optional[str]] # mode=critique: full poem text to evaluate
+    session_verses:  NotRequired[list[str]]     # co-author session: accumulated verse pairs
+
+
+class CompositionState(TypedDict):
+    """
+    Full graph state for the creative composition pipeline.
+    Flows through Agent 3 nodes in the same way AgentState flows through Agents 1+2.
+    Kept flat (no nested objects) so LangGraph merge semantics stay simple.
+    """
+    composition_context:   CompositionContext
+
+    # ── Al-Mulhim (mode=scaffold) outputs ────────────────────────────────
+    style_exemplars:    NotRequired[list[dict]]  # retrieved verses from target poet
+    style_fingerprint:  NotRequired[dict]        # {vocabulary, imagery, rhyme_sounds, meter, dialect}
+    scaffold:           NotRequired[str]         # markdown compositional guide for the poet
+
+    # ── Al-Musharik (mode=coauthor) outputs ──────────────────────────────
+    ajuz_candidates:    NotRequired[list[dict]]  # [{ajuz, meter_ok, rhyme_ok, thematic_score, annotation}]
+
+    # ── Al-Hafiz (mode=preserve) outputs ─────────────────────────────────
+    preservation_verse: NotRequired[str]         # the composed verse in poet's manner
+    attribution_badge:  NotRequired[str]         # mandatory synthetic attribution badge text
+
+    # ── Al-Muqayyim (mode=critique) outputs ──────────────────────────────
+    critique_scores:       NotRequired[dict]      # {meter, rhyme, authenticity, occasion, overall}
+    critique_annotations:  NotRequired[list[dict]] # [{line, dimension, verdict, annotation, suggestion}]
+
+    # ── External agent handshake (inter-agent communication) ─────────────
+    # Written by external_tools.py bridge calls so the graph can make routing
+    # decisions based on what Al-Nassikh and Fatat Al-Arab actually returned.
+    nassikh_poet_count:    NotRequired[int]  # poems Al-Nassikh found for target_poet
+    fatat_retrieved_count: NotRequired[int]  # exemplars Fatat Al-Arab returned
+
+    # ── Inter-agent consultation safeguards ──────────────────────────────
+    # Why these exist: cross-agent calls (Mulhim→Hafiz, Musharik→Muqayyim,
+    # Muqayyim→Nassikh) can recurse and explode token cost. consultation_depth
+    # is incremented on every cross-call and the bridge rejects calls when it
+    # reaches MAX_CONSULTATION_DEPTH. consultation_budget_ms is the wall-clock
+    # cap shared across nested calls — once exhausted, calls return empty.
+    consultation_depth:       NotRequired[int]   # default 0; cap at 2
+    consultation_budget_ms:   NotRequired[int]   # default 8000ms; decremented per call
+    consultation_trace:       NotRequired[list]  # [{from, to, ms, status}]
+    # Cross-turn memory threaded through from the search session (M9 inter-agent)
+    conversation_history:     NotRequired[list]  # last-5 turn dicts from search mode
+    # Voice fingerprint cached when one agent consults another for it
+    cached_voice_fingerprint: NotRequired[dict]  # {poet, vocab, openings, imagery, dialect}
+
+    # ── Agentic loop state (observe → reflect → retry) ───────────────────
+    # Mirrors CRAG's requery_count and Self-RAG's reflect_count in AgentState.
+    # Max retries enforced as named constants in mulhim.py / musharik.py.
+    scaffold_quality_ok:  NotRequired[bool]  # mulhim_validate: scaffold has required fields
+    scaffold_retry_count: NotRequired[int]   # mulhim_generate retries so far (max 1)
+    ajuz_quality_ok:      NotRequired[bool]  # musharik_quality: ≥ AJUZ_CANDIDATE_COUNT valid
+    ajuz_retry_count:     NotRequired[int]   # musharik_generate retries so far (max 1)
+
+    # ── Common (mirrors AgentState pattern) ──────────────────────────────
+    final_output:    NotRequired[str]        # UI-ready response
+    guardrail_passed: NotRequired[bool]
+    guardrail_flags:  NotRequired[list[str]]
+    agent_trace:     NotRequired[list[dict]]
+    stage_timings:   NotRequired[dict]
+
+
+def make_composition_state(ctx: "CompositionContext") -> "CompositionState":
+    """Minimal valid CompositionState — analogous to make_agent_state()."""
+    return CompositionState(
+        composition_context=ctx,
+        guardrail_passed=False,
+        guardrail_flags=[],
+        agent_trace=[],
+        stage_timings={},
+        consultation_depth=0,
+        consultation_budget_ms=8000,
+        consultation_trace=[],
+    )
+
+
 def validate_query_context(qc: dict) -> None:
     """
     Why: a track/answer_source mismatch would silently send a capabilities or
-    instructor_debug query into the 10-second RAG pipeline. Fail loudly at the
+    pipeline_debug query into the 10-second RAG pipeline. Fail loudly at the
     seam so routing bugs surface immediately rather than producing a misleading
     'no results' answer.
 

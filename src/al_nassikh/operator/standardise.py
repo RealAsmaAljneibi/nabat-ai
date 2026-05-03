@@ -6,6 +6,8 @@ resolutions (150–600 DPI scans) and with varying skew angles (books scanned
 flat vs camera-captured at an angle). Kraken's BLLA model was trained at 300 DPI;
 providing images at different resolutions degrades segmentation quality. Skew
 also causes the baseline detector to underfit short curved lines.
+Where it's called: app Tab B (live), tests Purpose: Deskews, binarises, resizes
+manuscript page images
 
 This module standardises every page to 300 DPI grayscale, deskews by detecting
 the dominant line angle, and applies a mild unsharp mask to sharpen diacritics

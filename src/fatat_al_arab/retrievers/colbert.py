@@ -5,6 +5,8 @@ Why this file exists: ColBERT late-interaction retrieval is the third leg of
 the triple-hybrid pipeline. It computes MaxSim between query token embeddings
 and document token embeddings, giving finer-grained token-level matching than
 bi-encoder dense retrieval.
+When triggered: Inside retrieve_node (Stage 4) — third leg.
+Purpose: Late-interaction stub (returns []); honest portability trade-off documented in docstring
 
 Current status: STUB (MVP scope).
 Why stubbed: installing pylate or RAGatouille adds ~2 GB of dependencies and

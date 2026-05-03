@@ -46,7 +46,5 @@ data/qdrant/qdrant_storage/
 # eScriptorium source clone (separate git repo — not a submodule)
 infra/escriptorium/escriptorium-src/
 
-# Exam preparation notes (personal, not for submission)
-doc/FINAL_PREP.md
-doc/RUBRIC.md
-doc/AI_USAGE_REFLECTION.md
+# Internal documentation — not for public repo
+doc/

@@ -5,6 +5,8 @@ Why this node exists: §2.5 Stage 4 — the first Agent 2 node. It takes
 QueryContext from Agent 1 and dispatches three independent retrieval calls
 (BM25, Dense, ColBERT stub), honouring any hard filters from Stage 3
 self-query so irrelevant manuscript volumes are never surfaced.
+When triggered: Stage 4 — first Agent-2 node when track = poetic_rag.
+Purpose: Triple hybrid (BM25 + Dense + ColBERT) in parallel; honours preferred_source → source_type filter; demotes speculative LLM genre/emotion/theme filters from hard → soft when router pinned source.
 
 Design decisions:
   1. Index singleton — the IndexBundle is loaded once per process and cached
@@ -112,6 +114,37 @@ def _apply_hard_filters(
     if level := filters.get("level"):
         result = [c for c in result if c.level == level]
 
+    # Source-type filter (set by the router via preferred_source).
+    # Accepts a single value or a list.
+    #
+    # Why STRICT (no §5 fallback like genre/emotions): when the router classifies
+    # a query as "Sheikh Zayed poetry" the user explicitly wants the
+    # online_digitized corpus — silently leaking manuscript chunks would defeat
+    # the whole point of source-aware routing.
+    #
+    # Empty-source_type tolerance: about 1k chunks in the index have an empty
+    # source_type field (data-quality gap from older ingest). When the user wants
+    # online_digitized, accept empty too — those chunks are almost all post-1990
+    # UAE leadership poems that pre-date the source_type tagging.
+    if src_type := filters.get("source_type"):
+        wanted = {src_type} if isinstance(src_type, str) else set(src_type)
+        if "online_digitized" in wanted:
+            wanted = wanted | {"", None}    # tolerate untagged online entries
+
+        def _ok(c) -> bool:
+            st = c.source_type
+            if st in wanted:
+                return True
+            # Default empty to manuscript only when caller asked for manuscript
+            return (not st) and ("manuscript" in wanted)
+
+        result = [c for c in result if _ok(c)]
+        if not result:
+            logger.info(
+                "_apply_hard_filters: source_type filter %s matched 0 chunks — "
+                "this leg returns empty (strict).", wanted,
+            )
+
     # M3: genre hard filter
     if genre := filters.get("genre"):
         genre_filtered = [c for c in result if c.genre == genre]
@@ -159,7 +192,35 @@ def retrieve_node(state: AgentState) -> AgentState:
     qc = state.get("query_context") or {}
     query_ar: str = qc.get("query_ar") or state.get("raw_query", "")
     hyde_passage: str | None = qc.get("hyde_passage")
-    filters_hard: dict = qc.get("filters_hard") or {}
+    filters_hard: dict = dict(qc.get("filters_hard") or {})
+
+    # Inject source_type filter from the router's preferred_source verdict.
+    # any_corpus  → no source filter (search all); manuscript_corpus / online_corpus
+    # → restrict to that subset of the index. Self-query may have already set a
+    # source_type — respect that and don't overwrite it.
+    preferred = qc.get("preferred_source")
+    filters_soft: dict = dict(qc.get("filters_soft") or {})
+    if preferred and "source_type" not in filters_hard:
+        if preferred == "manuscript_corpus":
+            filters_hard["source_type"] = "manuscript"
+        elif preferred == "online_corpus":
+            filters_hard["source_type"] = "online_digitized"
+        # any_corpus / poet_bio / corpus_stats / general_knowledge → no filter
+        if filters_hard.get("source_type"):
+            logger.info(
+                "retrieve_node: preferred_source=%s → source_type=%s",
+                preferred, filters_hard["source_type"],
+            )
+            # When the router has confidently set the source bucket, demote
+            # speculative LLM filters (genre/emotion) from hard to soft so they
+            # don't over-prune the legitimate hits. Poet-name + source remain hard.
+            for speculative in ("genre", "emotions_any", "theme"):
+                if speculative in filters_hard:
+                    filters_soft[speculative] = filters_hard.pop(speculative)
+                    logger.info(
+                        "retrieve_node: demoted %s=%r from hard→soft (router set preferred_source).",
+                        speculative, filters_soft[speculative],
+                    )
 
     # On CRAG re-query, blend the LLM's strategy into the BM25 query so it
     # searches for the specific terms the grader identified as missing.

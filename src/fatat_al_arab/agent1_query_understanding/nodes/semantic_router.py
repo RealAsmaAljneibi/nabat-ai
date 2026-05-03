@@ -4,10 +4,12 @@ agent1_query_understanding/nodes/semantic_router.py
 Why this file exists: Stage 0.5b — after the deterministic regex router fails
 to classify a query, we need to distinguish four user intention families before
 spending 5-10 seconds on the full RAG pipeline:
+When triggered: Stage 0.5b — runs only if Tiers 1 + 2 both abstain.
+Purpose: LLM 4-track classifier (capabilities / registry_lookup / pipeline_debug / poetic_rag); LRU-cache.
 
   capabilities    — "how can you help me?" (never needs retrieval)
   registry_lookup — factual corpus stats (LLM-detected backup for regex misses)
-  instructor_debug — pipeline-introspection questions from instructors/devs
+  pipeline_debug  — pipeline-introspection questions from developers/operators
   poetic_rag      — everything else (poetry search, thematic, literary)
 
 Design decisions:
@@ -37,7 +39,7 @@ logger = logging.getLogger(__name__)
 ROUTER_TIMEOUT_S = 1.5    # §Decisions §7: wall-clock cap on the semantic router call
 CONFIDENCE_THRESHOLD = 0.6  # §Decisions §1 risk mitigation: require ≥0.6 to accept non-poetic_rag
 
-_VALID_TRACKS = frozenset({"capabilities", "registry_lookup", "instructor_debug", "poetic_rag"})
+_VALID_TRACKS = frozenset({"capabilities", "registry_lookup", "pipeline_debug", "poetic_rag"})
 
 # ── Bilingual cache-key builder ───────────────────────────────────────────────
 # Why NOT reusing normalise_arabic from embed.py: that function strips all
@@ -67,7 +69,7 @@ assistant for Khaleeji Nabati poetry manuscripts.
 Classify the user query into exactly ONE track. Return ONLY valid JSON:
 
 {
-  "track": "capabilities" | "registry_lookup" | "instructor_debug" | "poetic_rag",
+  "track": "capabilities" | "registry_lookup" | "pipeline_debug" | "poetic_rag",
   "subintent": <string or null>,
   "confidence": <float 0.0-1.0>,
   "alt_family": <second most likely track, or null>,
@@ -82,7 +84,7 @@ Track definitions:
                         vector search (counting, dates, regions, collector names).
                         Examples: "how many manuscripts?", "who collected them?",
                                   "what region are they from?"
-  "instructor_debug"  — instructor / developer asks to inspect pipeline internals.
+  "pipeline_debug"    — developer or operator asks to inspect pipeline internals.
                         Examples: "what was your CRAG verdict?", "explain RRF",
                                   "show the last turn debug info", "explain your fallback",
                                   "what self-query filters did you extract?"
@@ -92,7 +94,7 @@ Track definitions:
                                   "what did Al-Hazani write about the desert?"
 
 IMPORTANT: Default to "poetic_rag" when uncertain. Only classify as "capabilities" or
-"instructor_debug" when very confident. Never classify a genuine poetry question as
+"pipeline_debug" when very confident. Never classify a genuine poetry question as
 "registry_lookup" — that track is for corpus-level statistics only.
 Return ONLY the JSON object, no surrounding text.
 """

@@ -154,7 +154,7 @@ _OUT_OF_SCOPE_CUES = [
     r"\bملحمة\s+(جلجامش|هوميروس|الإلياذة)\b",
 ]
 
-# ── Capabilities & instructor-debug fast-path patterns ───────────────────────
+# ── Capabilities & pipeline-debug fast-path patterns ─────────────────────────
 # Why in the regex router (not just semantic_router): when the LLM call times
 # out or fails (e.g. bad API key), Stage 0.5b defaults to poetic_rag. These
 # patterns give a zero-LLM fallback so "how can you help me" never goes to RAG.
@@ -181,7 +181,7 @@ _CAPABILITIES_CUES = [
     r"(أخبرني|قل لي)\s+(ما|عن|ماذا)\s+(تفعل|تستطيع|يمكنك)",
 ]
 
-_INSTRUCTOR_DEBUG_CUES = [
+_PIPELINE_DEBUG_CUES = [
     r"\b(crag|self.?rag|rrf|hyde|self.?query)\b",
     r"\b(debug|pipeline|verdict|fallback|introspect)\b",
     r"\blast turn\b",
@@ -355,6 +355,187 @@ _UNSUPPORTED_DIMS: list[tuple[str, list[str]]] = [
 def _any_match(patterns: list[str], text: str) -> bool:
     """Case-insensitive, Unicode-aware scan."""
     return any(re.search(p, text, flags=re.IGNORECASE) for p in patterns)
+
+
+# ── Known-poet roster (loaded once at import) ────────────────────────────────
+# Why module-level cache: querying poets_bio.json on every call would add ~5 ms
+# per query. Loading once is amortised across the whole session. The list is
+# pre-tokenised into a regex alternation for O(1) substring containment scan.
+#
+# Sources merged:
+#   1. poets_bio.json — 509 historical Nabati poets
+#   2. anchor_registry — distinct poet_name fields (covers ~510 names)
+#   3. UAE_LEADERSHIP_POETS — handcrafted list of recent leaders whose poetry
+#      lives in the online_digitized corpus (Sheikh Zayed, MBZ, MBR, Hazza, etc.)
+#      These are NOT in poets_bio.json by default but are 1st-class search targets.
+
+# Each cluster is one person — all variants resolve to the same identity.
+# When the verification gate checks corpus presence, it scans ALL variants in
+# the cluster and takes the max count, so an English match like "Sheikh Zayed"
+# also tries the Arabic substring "زايد" (which is what the corpus poet_name
+# fields actually contain).
+_UAE_LEADER_CLUSTERS: list[list[str]] = [
+    # Sheikh Zayed bin Sultan Al Nahyan (founder)
+    ["زايد", "الشيخ زايد", "زايد بن سلطان", "Zayed", "Sheikh Zayed", "Shaikh Zayed"],
+    # Mohammed bin Zayed
+    ["محمد بن زايد", "MBZ", "Mohammed bin Zayed", "Mohamed bin Zayed"],
+    # Mohammed bin Rashid
+    ["محمد بن راشد", "MBR", "Mohammed bin Rashid"],
+    # Hazza bin Zayed
+    ["هزاع", "هزاع بن زايد", "Hazza", "Hazza bin Zayed"],
+    # Hamdan bin Mohammed
+    ["حمدان بن محمد", "Hamdan bin Mohammed", "Fazza", "فزاع"],
+    # Sultan bin Mohammed Al Qasimi
+    ["سلطان القاسمي", "Sultan Al Qasimi"],
+    # Khalifa bin Zayed
+    ["خليفة بن زايد", "Khalifa bin Zayed"],
+]
+_UAE_LEADERSHIP_POETS = [n for cluster in _UAE_LEADER_CLUSTERS for n in cluster]
+
+
+def _cluster_for(name: str) -> list[str]:
+    """Return all variant names for the cluster containing *name*."""
+    name_lower = name.lower().strip()
+    for cluster in _UAE_LEADER_CLUSTERS:
+        for variant in cluster:
+            if variant.lower().strip() == name_lower:
+                return cluster
+    return [name]
+
+_POET_NAME_REGEX: Optional[re.Pattern] = None
+
+
+def _build_poet_regex() -> re.Pattern:
+    """
+    Build a single compiled alternation regex matching any known poet name.
+    Names from registry/bio are filtered to ≥ 3 chars to avoid false positives
+    on common short tokens. Matched case-insensitively, Unicode-aware.
+    """
+    names: set[str] = set(_UAE_LEADERSHIP_POETS)
+
+    # Try poets_bio.json
+    try:
+        import json
+        from pathlib import Path
+        repo_root = Path(__file__).resolve().parents[5]
+        bio_path  = repo_root / "data" / "ground_truth" / "poets_bio.json"
+        if bio_path.exists():
+            for entry in json.loads(bio_path.read_text(encoding="utf-8")):
+                name = (entry.get("poet_name") or "").strip()
+                if len(name) >= 3:
+                    names.add(name)
+    except Exception as exc:
+        logger.debug("poet roster: could not load poets_bio.json (%s)", exc)
+
+    # Try anchor_registry — pull distinct poet_name fields
+    try:
+        import json
+        from pathlib import Path
+        repo_root = Path(__file__).resolve().parents[5]
+        _data = repo_root / "data"
+        _gt   = _data / "ground_truth"
+        _candidates = [
+            _data / "unified_registry.json",
+            _gt / "anchor_registry_full_enriched.json",
+            _gt / "anchor_registry_phase4.json",
+        ]
+        for reg_path in _candidates:
+            if reg_path.exists():
+                for entry in json.loads(reg_path.read_text(encoding="utf-8")):
+                    name = (entry.get("poet_name") or "").strip()
+                    if len(name) >= 3:
+                        names.add(name)
+                break
+    except Exception as exc:
+        logger.debug("poet roster: could not load anchor_registry (%s)", exc)
+
+    # Build alternation. Sort by length DESC so "Sheikh Zayed" is matched before "Zayed".
+    sorted_names = sorted(names, key=len, reverse=True)
+    escaped = [re.escape(n) for n in sorted_names if n]
+    if not escaped:
+        # No roster — return a regex that never matches
+        return re.compile(r"(?!)")
+    pattern = r"(?:^|\W)(" + "|".join(escaped) + r")(?:\W|$)"
+    logger.info("poet roster: loaded %d distinct poet names for veto check.", len(escaped))
+    return re.compile(pattern, flags=re.IGNORECASE | re.UNICODE)
+
+
+def _query_mentions_known_poet(text: str) -> bool:
+    """
+    True when *text* contains a substring matching any name from the known-poet
+    roster (poets_bio + anchor_registry + UAE leadership list).
+    """
+    global _POET_NAME_REGEX
+    if _POET_NAME_REGEX is None:
+        _POET_NAME_REGEX = _build_poet_regex()
+    return bool(_POET_NAME_REGEX.search(text))
+
+
+_UAE_LEADER_REGEX = re.compile(
+    r"(?:^|\W)(" + "|".join(re.escape(n) for n in _UAE_LEADERSHIP_POETS) + r")(?:\W|$)",
+    flags=re.IGNORECASE | re.UNICODE,
+)
+
+
+def _query_mentions_uae_leader(text: str) -> bool:
+    """
+    True when the query mentions a UAE leadership poet whose corpus lives in
+    the online_digitized index (not the handwritten manuscripts).
+    """
+    return bool(_UAE_LEADER_REGEX.search(text))
+
+
+def _matched_uae_leader_name(text: str) -> Optional[str]:
+    """Return the canonical Arabic leader-name substring matched in *text*."""
+    m = _UAE_LEADER_REGEX.search(text)
+    return m.group(1) if m else None
+
+
+# ── Index-backed poet count (cached) ─────────────────────────────────────────
+# Why cached: scanning 8,415 chunk metadata for every query would add ~50 ms.
+# The poet → count map is computed once per process from the loaded index.
+
+_POET_COUNT_CACHE: Optional[dict] = None
+
+
+def _build_poet_count_cache() -> dict:
+    """
+    Walk the loaded Qdrant index ONCE and bucket chunks by lower-cased poet_name.
+    Returns {poet_name_lower: int_count}. Includes online_digitized chunks that
+    corpus_stats.count_poems_by_poet (registry-only) cannot see.
+    """
+    counts: dict[str, int] = {}
+    try:
+        # Lazy-import: avoid loading the index at import time of this module.
+        from fatat_al_arab.index import load_index, DEFAULT_QDRANT
+        bundle = load_index(DEFAULT_QDRANT)
+        for c in bundle.chunks:
+            key = (c.poet_name or "").strip().lower()
+            if key:
+                counts[key] = counts.get(key, 0) + 1
+    except Exception as exc:
+        logger.debug("poet count cache: index load failed (%s)", exc)
+    return counts
+
+
+def _count_index_chunks_for_poet_variants(variants: list[str]) -> int:
+    """
+    Return the number of indexed chunks whose poet_name CONTAINS any of the
+    given variant substrings (case-insensitive). Uses the cached poet→count map.
+    """
+    global _POET_COUNT_CACHE
+    if _POET_COUNT_CACHE is None:
+        _POET_COUNT_CACHE = _build_poet_count_cache()
+    if not _POET_COUNT_CACHE:
+        return 0
+    matched_keys: set[str] = set()
+    lc_variants = [v.lower().strip() for v in variants if v.strip()]
+    for poet_key in _POET_COUNT_CACHE:
+        for v in lc_variants:
+            if v and v in poet_key:
+                matched_keys.add(poet_key)
+                break
+    return sum(_POET_COUNT_CACHE[k] for k in matched_keys)
 
 
 # ── Thematic "about X" detector ──────────────────────────────────────────────
@@ -623,9 +804,9 @@ def _intent_router_node_impl(state: AgentState) -> AgentState:
         state["query_context"] = new_qc  # type: ignore[assignment]
         return state
 
-    # ── Check 3: instructor debug (zero-LLM fast-path) ───────────────────────
-    if _any_match(_INSTRUCTOR_DEBUG_CUES, raw_query):
-        logger.info("intent_router: instructor_debug query — routing to deterministic answer.")
+    # ── Check 3: pipeline debug (zero-LLM fast-path) ─────────────────────────
+    if _any_match(_PIPELINE_DEBUG_CUES, raw_query):
+        logger.info("intent_router: pipeline_debug query — routing to deterministic answer.")
         new_qc = {
             **qc,
             "query_lang":           "ar" if has_arabic else "en",
@@ -635,10 +816,10 @@ def _intent_router_node_impl(state: AgentState) -> AgentState:
             "detected_dialect":     "msa" if has_arabic else "unknown",
             "intent_confidence":    0.90,
             "answer_source":        "registry_lookup",
-            "deterministic_intent": "instructor_debug",
-            "track":                "instructor_debug",
+            "deterministic_intent": "pipeline_debug",
+            "track":                "pipeline_debug",
             "router_source":        "regex",
-            "router_cues":          ["instructor_debug"],
+            "router_cues":          ["pipeline_debug"],
         }
         state["query_context"] = new_qc  # type: ignore[assignment]
         return state
@@ -682,21 +863,100 @@ def _intent_router_node_impl(state: AgentState) -> AgentState:
     # أبيات الحكمة" is high. These are not counting questions — they are thematic
     # retrieval questions. The veto fires on clear content-seeking signals and
     # forces rag_pipeline so the prototype router never gets a chance to misroute.
+    #
+    # Patterns now allow modifiers between verb and noun ("give me some shaikh
+    # zayed poems", "show me three ghazal verses"). The {0,40} non-greedy
+    # spacer permits up to ~6 words of intervening modifier without false-firing.
     _CONTENT_VETO_PATTERNS = [
         r"ابحث\s+عن",                          # "I'm searching for"
         r"أريد\s+(أن\s+)?(أجد|أعرف|أرى|أعثر)",  # "I want to find/know/see"
         r"هل\s+(يوجد|توجد|هناك)",              # "is there / do you have"
         r"(ما\s+هي|ما\s+هو)\s+(أشعار|قصائد|أبيات|أفضل)",  # "what are the poems/verses"
         r"(أشعار|قصائد)\s+.{1,50}(في|من)\s+(المخطوطات|الديوان|التراث)",  # "poems of X in manuscripts"
-        r"\b(find|search|look for|show me|give me)\s+(poems?|verses?|qasidas?|bayts?)\b",
-        r"\bwhat (are|were) (the )?(poems?|verses?|qasidas?) (about|on|in|from)\b",
+        # Arabic content-seeking verbs with up to ~6 words of intervening modifier
+        r"(أعطني|اعطني|أرني|اعرض|ابحث|اقرأ|أوجد|هاتي?|اسرد|أرسل|قدّم|اذكر)"
+            r"[^\n]{0,40}?(قصائد|أبيات|شعر|بيت|قصيدة|من\s+شعر|من\s+قصائد)",
+        # English content-seeking verbs with intervening modifier (the OLD form
+        # required the noun to immediately follow the verb — "give me poems" —
+        # which broke on natural phrasings like "give me some shaikh zayed poems")
+        r"\b(find|search|look\s+for|show\s+me|give\s+me|recite|fetch|bring\s+me|tell\s+me\s+about|read\s+me)"
+            r"\b[\w\s'·,-]{0,40}?\b(poems?|verses?|qasidas?|bayts?|abyat|poetry|lines|stanzas?|couplets?)\b",
+        r"\bwhat (are|were) (the )?(poems?|verses?|qasidas?) (about|on|in|from|by)\b",
+        r"\bpoems?\s+by\b",                  # "poems by Sheikh Zayed"
+        r"قصائد\s+(لـ|الشاعر|الشيخ)",        # "قصائد للشيخ" / "قصائد لـ" / "قصائد الشاعر"
+        r"شعر\s+(الشيخ|الشاعر|لـ)",          # "شعر الشيخ زايد" / "شعر الشاعر"
     ]
+    # ── Check 4b: poet-name veto (fires BEFORE content veto + prototype router) ─
+    # Why this check exists: queries that mention a known poet by name are
+    # almost always retrieval queries ("Sheikh Zayed poetry", "verses of
+    # Al-Hazani", "ابن يحيى"). The TF-IDF prototype router can still misclassify
+    # them as count_poems if the surface words match a counting prototype.
+    #
+    # Source choice: UAE leadership poets (Zayed, MBZ, …) live in the
+    # online_digitized corpus, not the manuscripts. We bias retrieval toward
+    # online_corpus when one of those names is mentioned; for historical poets
+    # (Al-Hazani, Ibn Yahya, …) we leave it as any_corpus so manuscripts win.
+    # This check runs BEFORE the generic content-veto so the more specific
+    # source bucket is chosen.
+    if _query_mentions_known_poet(raw_query):
+        is_uae_leader = _query_mentions_uae_leader(raw_query)
+        preferred = "online_corpus" if is_uae_leader else "any_corpus"
+
+        # Poet-verification gate: when the matched poet IS a UAE leader name,
+        # ask Al-Nassikh if the corpus actually has any of their poems. If 0,
+        # short-circuit to general-knowledge fallback BEFORE wasting a CRAG cycle
+        # synthesising over chunks about a different leader (the bug seen with
+        # "what has shaikh hazza written" — corpus had 0 Hazza poems but the
+        # synthesiser hallucinated an answer using Hamdan/MBR chunks).
+        #
+        # Critical: scan ALL variants in the matched person's cluster. An English
+        # match like "Sheikh Zayed" must also try Arabic "زايد" / "الشيخ زايد"
+        # because the corpus poet_name field is Arabic-only.
+        # Why use the index directly (not corpus_stats.count_poems_by_poet):
+        # corpus_stats only reads anchor_registry_full_enriched.json (manuscript
+        # anchors only). UAE leadership poems live in the online_digitized
+        # subset of the Qdrant index (~3,466 chunks not in the registry). Counting
+        # via the index is the only way to see ALL chunks the retriever would actually
+        # find. Result is cached at module level — only computed once per process.
+        force_gk = False
+        if is_uae_leader:
+            matched = _matched_uae_leader_name(raw_query) or ""
+            if matched:
+                variants = _cluster_for(matched)
+                n_chunks = _count_index_chunks_for_poet_variants(variants)
+                if n_chunks < 3:
+                    force_gk = True
+                    logger.info(
+                        "intent_router: UAE leader cluster %r has only %d index chunks "
+                        "— forcing general-knowledge fallback.",
+                        variants[:3], n_chunks,
+                    )
+                else:
+                    logger.info(
+                        "intent_router: UAE leader cluster %r has %d index chunks → corpus retrieval.",
+                        variants[:3], n_chunks,
+                    )
+
+        logger.info(
+            "intent_router: poet-name veto — routing to rag_pipeline "
+            "(preferred_source=%s, force_gk=%s).", preferred, force_gk,
+        )
+        new_qc = {
+            **qc,
+            "answer_source":   "rag_pipeline",
+            "preferred_source": preferred,
+            "force_general_knowledge": force_gk,
+        }
+        state["query_context"] = new_qc  # type: ignore[assignment]
+        return state
+
+    # ── Check 4c: content-query veto (fires BEFORE prototype router) ─────────
     if _any_match(_CONTENT_VETO_PATTERNS, raw_query):
         logger.debug(
             "intent_router: content-query veto fired — skipping prototype router, "
-            "routing to rag_pipeline."
+            "routing to rag_pipeline (any_corpus)."
         )
-        new_qc = {**qc, "answer_source": "rag_pipeline"}
+        new_qc = {**qc, "answer_source": "rag_pipeline", "preferred_source": "any_corpus"}
         state["query_context"] = new_qc  # type: ignore[assignment]
         return state
 

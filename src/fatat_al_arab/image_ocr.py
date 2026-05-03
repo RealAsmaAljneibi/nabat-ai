@@ -6,6 +6,8 @@ image (handwritten or photographed Arabic). This module turns that image into
 question text using pytesseract (Arabic language pack) with an LLM cleanup pass
 for low-confidence output. The cleaned text is then handed to translate.py and
 the rest of Agent 1.
+When triggered: When user attaches a manuscript image in Streamlit composer.
+Purpose: Pytesseract Arabic OCR — extracts verse text from image so it can join the query
 
 Architecture refs: §2.4 Stage 1 (image input path), §2.8 "Agent 1 image OCR"
 (honest refusal when OCR confidence is too low — we don't silently embed garbage).

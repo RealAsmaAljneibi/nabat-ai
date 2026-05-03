@@ -6,6 +6,7 @@ triage.py runs, the pages that are NORMAL (not DEGRADED) need to be tracked so
 the Operator Console knows what's waiting for annotation. This module writes and
 reads `data/ground_truth/operator_queue.json` — a simple JSON list of pending
 page entries. The Streamlit Archive Manager tab renders this queue as a task list.
+Where it's called: app Tab B (live), tests. Purpose: HITL review queue — tracks page status (pending → in_review → complete)    
 
 Why a JSON file (not a database): the whole system runs on any laptop with no
 infrastructure beyond Python. A JSON queue is inspectable, diffable in git, and

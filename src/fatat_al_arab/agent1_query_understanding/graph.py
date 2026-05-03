@@ -5,6 +5,9 @@ Why this file exists: §2.4 commits to a LangGraph-wired Agent 1. The graph is t
 executable implementation of the §2.4 stage sequence. Having it in one file means
 a reviewer can open §2.4 and this file side-by-side and trace every node → edge →
 condition to the architecture document.
+When triggered: At process start (compiled once); invoked by orchestrator.run_agent1() per turn.
+Purpose: LangGraph StateGraph for Stages 0.5 → 3 with conditional edges (clarification short-circuit, registry-lookup short-circuit).
+
 
 Stage sequence (§2.4):
   Stage 1 → bilingual_analyzer
@@ -62,7 +65,7 @@ def _after_router(state: AgentState) -> Literal["semantic_router", "__end__"]:
     deterministic counting / metadata / unsupported-dim question, in which case
     the answer comes from deterministic_answer_node in Agent 2. When that
     happens we short-circuit — no LLM tokens needed. Otherwise we fall through
-    to Stage 0.5b (semantic_router) for capabilities/instructor_debug detection.
+    to Stage 0.5b (semantic_router) for capabilities/pipeline_debug detection.
     """
     qc = state.get("query_context") or {}
     if qc.get("answer_source") == "registry_lookup":
@@ -74,7 +77,7 @@ def _after_router(state: AgentState) -> Literal["semantic_router", "__end__"]:
 def _after_semantic(state: AgentState) -> Literal["bilingual_analyzer", "__end__"]:
     """
     Why a conditional here: Stage 0.5b (semantic_router) catches capabilities /
-    instructor_debug / registry_lookup queries that regex can't detect. When it
+    pipeline_debug / registry_lookup queries that regex can't detect. When it
     short-circuits (answer_source="registry_lookup") we skip the bilingual
     analyzer and HyDE — all of which cost LLM tokens we don't need.
     """

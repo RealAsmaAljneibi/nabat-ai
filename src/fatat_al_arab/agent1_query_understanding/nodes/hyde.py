@@ -8,6 +8,8 @@ are long and richly idiomatic. HyDE bridges this by asking the LLM to generate a
 plausible Nabati verse that *would* answer the query, then embedding that verse
 rather than the raw query. The verse's dense vector lands much closer to the actual
 corpus vectors than the query itself would.
+When triggered: Stage 2a — after bilingual_expand; SKIPPED if query already has ≥6 Arabic tokens.
+Purpose: Hypothetical Nabati verse → dense query vector (HyDE technique); 3 s hard timeout.
 
 Failure handling (§5 budget): HyDE has 1 retry and a 3-second cap per the §5
 table ("Agent 1 HyDE: 1 retry, 3 s timeout — fallback: proceed without
@@ -130,6 +132,24 @@ def hyde_node(state: AgentState) -> AgentState:
         return state
 
     query_ar: str = qc.get("query_ar", state.get("raw_query", ""))
+
+    # Skip HyDE when the Arabic query is already specific (≥6 tokens).
+    # A long query has dense vocabulary that already lands near corpus vectors;
+    # paying a 3 s LLM call for a hypothetical verse adds noise, not signal.
+    _arabic_tokens = [t for t in query_ar.split() if t.strip()]
+    if len(_arabic_tokens) >= 6:
+        logger.debug("hyde: skipping — query has %d tokens (≥6 threshold).", len(_arabic_tokens))
+        updated_qc = {**qc, "hyde_passage": None, "hyde_embedding": None}
+        from ...state import trace_append
+        return {
+            **state,
+            "query_context": updated_qc,
+            "agent_trace": trace_append(
+                state, stage="2a", icon="🔬",
+                label="HyDE — Hypothetical Verse",
+                summary=f"Skipped — query already specific ({len(_arabic_tokens)} tokens)",
+            ),
+        }
 
     # §5 budget: 1 retry → we call _hyde_with_timeout which already handles the
     # internal retry via llm.py's MAX_RETRIES. The timeout wrapper adds the wall-

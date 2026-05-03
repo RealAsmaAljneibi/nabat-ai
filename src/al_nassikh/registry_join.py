@@ -6,6 +6,8 @@ Why this file exists: §M1 — anchor_registry_phase4.json stores raw filenames
 names ("Al-Daoud Manuscript", "Ibn Yahya Manuscript (601-842)"). This one-shot
 script enriches every anchor with three new fields by joining against
 manuscript_registry.json via manuscript_filename_map.json.
+Where it's called: Standalone build step
+Purpose: Enriched the registry with human-readable manuscript names — already ran
 
 Why a separate script (not done inside phase4_merger): the merger runs once per
 eScriptorium export and is owned by Al-Nassikh's ETL pipeline. The registry join

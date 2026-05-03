@@ -10,6 +10,9 @@ anchor registry and the poets_bio.json to attach:
   - Volume and page for the "turn to page X" citation
   - Source image path so the Streamlit viewer can open the folio
 
+When triggered: Stage 6 — after rrf_fuse.
+Purpose: Joins chunks to anchor registry: swaps MSA-normalised text → Khaleeji form, attaches poet bio + folio path.
+
 Why join here (not in Stage 4): Stage 4 retrieves at speed; carrying full
 registry entries through the RRF step would double memory usage per query.
 Better to resolve citations only for the top-N chunks that survive fusion.
@@ -38,8 +41,16 @@ logger = logging.getLogger(__name__)
 
 _HERE      = Path(__file__).resolve().parent
 _REPO_ROOT = _HERE.parent.parent.parent.parent          # …/handwritten-poems
-_REGISTRY_PATH = _REPO_ROOT / "data" / "ground_truth" / "anchor_registry_phase4.json"
-_BIOS_PATH     = _REPO_ROOT / "data" / "ground_truth" / "poets_bio.json"
+_DATA      = _REPO_ROOT / "data"
+_GT        = _DATA / "ground_truth"
+# Prefer unified_registry (all source types); fall back to manuscript-only enriched file.
+_REGISTRY_PATH = (
+    _DATA / "unified_registry.json"
+    if (_DATA / "unified_registry.json").exists()
+    else _GT / "anchor_registry_full_enriched.json"
+)
+_ONLINE_REGISTRY_PATH = _REPO_ROOT / "data" / "online_corpus" / "online_anchor_registry.json"
+_BIOS_PATH            = _GT / "poets_bio.json"
 
 
 # ── Cached data loaders ────────────────────────────────────────────────────────
@@ -47,16 +58,28 @@ _BIOS_PATH     = _REPO_ROOT / "data" / "ground_truth" / "poets_bio.json"
 @lru_cache(maxsize=1)
 def _load_registry() -> dict[str, dict]:
     """
-    Load anchor_registry_phase4.json keyed by source_row_id.
-    Cached — the 1,502-entry registry is ~800 KB; loading it once is fine.
+    Merge the manuscript registry (keyed by source_row_id) with the online corpus
+    registry (keyed by anchor_id) so that ecssr, aldiwan, and 4byt chunks can resolve
+    their citations without falling through to citation_resolvable=False.
     """
+    registry: dict[str, dict] = {}
     try:
         with open(_REGISTRY_PATH, encoding="utf-8") as f:
             entries = json.load(f)
-        return {e["source_row_id"]: e for e in entries if e.get("source_row_id")}
+        registry.update({e["source_row_id"]: e for e in entries if e.get("source_row_id")})
     except FileNotFoundError:
-        logger.warning("resolve_heritage: registry not found at %s", _REGISTRY_PATH)
-        return {}
+        logger.warning("resolve_heritage: main registry not found at %s", _REGISTRY_PATH)
+
+    # Online corpus uses anchor_id as its primary key (no source_row_id field)
+    try:
+        with open(_ONLINE_REGISTRY_PATH, encoding="utf-8") as f:
+            online_entries = json.load(f)
+        registry.update({e["anchor_id"]: e for e in online_entries if e.get("anchor_id")})
+        logger.debug("resolve_heritage: loaded %d online corpus entries.", len(online_entries))
+    except FileNotFoundError:
+        logger.debug("resolve_heritage: online registry not found at %s (ok if not used).", _ONLINE_REGISTRY_PATH)
+
+    return registry
 
 
 @lru_cache(maxsize=1)
@@ -145,11 +168,27 @@ def _resolve_chunk(chunk_dict: dict, registry: dict, bios: dict) -> dict:
         return resolved
 
     # ── Citation fields from registry ──────────────────────────────────
+    # Why multi-key fallbacks: online corpus entries use "poem_matla"/"text"
+    # instead of "matla_text", and "source_page" instead of "page_number".
     resolved["citation_resolvable"]  = True
-    resolved["matla_text"]           = registry_entry.get("matla_text") or ""
+    resolved["matla_text"]           = (
+        registry_entry.get("matla_text") or
+        registry_entry.get("poem_matla") or
+        registry_entry.get("text") or ""
+    )
     resolved["poet_name"]            = registry_entry.get("poet_name") or chunk_dict.get("poet_name") or ""
     resolved["source_volume"]        = registry_entry.get("source_volume") or chunk_dict.get("source_volume") or ""
-    resolved["source_page"]          = int(registry_entry.get("page_number") or chunk_dict.get("source_page") or 0)
+    def _to_int(v: object) -> int:
+        try:
+            return int(v) if v else 0
+        except (ValueError, TypeError):
+            return 0
+
+    resolved["source_page"] = _to_int(
+        registry_entry.get("page_number") or
+        registry_entry.get("source_page") or
+        chunk_dict.get("source_page")
+    )
     resolved["source_image_path"]    = registry_entry.get("source_image_path") or chunk_dict.get("source_image_path") or ""
     resolved["manuscript_short_key"] = registry_entry.get("manuscript_short_key") or chunk_dict.get("manuscript_short_key") or ""
     resolved["manuscript_arabic_name"]  = registry_entry.get("manuscript_arabic_name") or ""

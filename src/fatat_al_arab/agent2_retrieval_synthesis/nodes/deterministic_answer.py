@@ -7,6 +7,8 @@ THIS node instead of the usual Stage 4-10 retrieval → synthesis path.
 The node formats a bilingual answer from corpus_stats (which reads the
 ground-truth JSON files directly) and emits a citation block that points
 to the registry file rather than a verse anchor.
+When triggered: When query_context.answer_source == "registry_lookup" (counting, capabilities, debug, image-provenance) — bypasses retrieval entirely.
+Purpose: Bilingual templated answer from corpus_stats registry lookup; < 2 ms; zero LLM; emits 🗂️ badge.
 
 Why live in agent2 and not agent1: §2.9 of the architecture doc says the
 final_response + formatted_response fields belong to Agent 2. Keeping that
@@ -25,6 +27,7 @@ import logging
 from typing import Any
 
 from ...state import AgentState
+from ...personas import NASSIKH_PERSONA
 # al_nassikh is a sibling package under src/ — use an absolute import to
 # avoid crossing the fatat_al_arab package boundary with relative dots.
 from al_nassikh import corpus_stats
@@ -40,8 +43,8 @@ logger = logging.getLogger(__name__)
 
 _AR = {
     "count_poems":
-        "تحتوي المجموعة على **{bayts:,}** بيتاً مفهرساً في {mss_with_toc} مخطوطة "
-        "(من أصل {mss_total} مخطوطة). "
+        "تحتوي المجموعة على **{bayts:,}** بيتاً مفهرساً عبر **{mss_total}** مخطوطة "
+        "(منها **{mss_with_toc}** مخطوطة تحتوي على فهرس قابل للقراءة). "
         "منها **{toc_poems:,}** بيت مطلع من قصائد الفهرس، "
         "و**{full_poems:,}** قصيدة مكتملة التفريغ بيتاً بيتاً.",
     "count_poets":
@@ -77,8 +80,8 @@ _AR = {
 
 _EN = {
     "count_poems":
-        "The corpus contains **{bayts:,}** indexed bayts (verse couplets) across {mss_with_toc} "
-        "manuscripts (out of {mss_total} canonical manuscripts). "
+        "The corpus contains **{bayts:,}** indexed bayts (verse couplets) across **{mss_total}** "
+        "canonical manuscripts (**{mss_with_toc}** of which have a legible table of contents). "
         "Of these, **{toc_poems:,}** are opening bayts (matla) from TOC-listed poems, "
         "and **{full_poems}** poems are fully transcribed bayt-by-bayt.",
     "count_poets":
@@ -206,13 +209,13 @@ def _citation_block(intent: str, lang: str) -> list[dict]:
     the source without a special case.
     """
     field_map = {
-        "count_poems":         ("anchor_registry_phase4.json", "len(entries)"),
-        "count_poets":         ("anchor_registry_phase4.json", "distinct(normalised_poet)"),
-        "list_poets":          ("anchor_registry_phase4.json", "top distinct(normalised_poet) by poem count"),
-        "count_child_grief_poems": ("anchor_registry_phase4_enriched.json", "child/grief term match + genre=رثاء"),
+        "count_poems":         ("unified_registry.json", "len(entries)"),
+        "count_poets":         ("unified_registry.json", "distinct(normalised_poet)"),
+        "list_poets":          ("unified_registry.json", "top distinct(normalised_poet) by poem count"),
+        "count_child_grief_poems": ("unified_registry.json", "child/grief term match + genre=رثاء"),
         "count_manuscripts":   ("manuscript_registry.json",     "len(entries)"),
-        "count_pages":         ("anchor_registry_phase4.json", "distinct(source_image_path)"),
-        "corpus_overview":     ("manuscript_registry.json + anchor_registry_phase4.json", "aggregate"),
+        "count_pages":         ("unified_registry.json", "distinct(source_image_path)"),
+        "corpus_overview":     ("manuscript_registry.json + unified_registry.json", "aggregate"),
         "age":                 ("manuscript_registry.json",     "min(circa_date_start), max(circa_date_end)"),
         "provenance":          ("manuscript_registry.json",     "region_of_origin, collector"),
     }
@@ -233,7 +236,7 @@ def _citation_block(intent: str, lang: str) -> list[dict]:
     }]
 
 
-# ── Static explanation strings (instructor_debug subintents) ─────────────────
+# ── Static explanation strings (pipeline_debug subintents) ──────────────────
 # Why static: these are architecture facts that should not be hallucinated by
 # an LLM. Versioned strings here are auditable and testable.
 
@@ -346,7 +349,7 @@ I serve four audiences:
 
 **Filterable dimensions:** poet · manuscript · page · region · collector · genre · emotion · century
 
-Try: "How many bayts by Al-Hazani?" (registry) · "Bayts of longing in Najdi" (semantic) · "What was your CRAG verdict?" (instructor)
+Try: "How many bayts by Al-Hazani?" (registry) · "Bayts of longing in Najdi" (semantic) · "What was your CRAG verdict?" (debug)
 """
 
 
@@ -378,9 +381,9 @@ def _answer_capabilities(state: AgentState) -> AgentState:
     return state
 
 
-# ── Instructor debug answer ───────────────────────────────────────────────────
+# ── Pipeline debug answer ─────────────────────────────────────────────────────
 
-def _answer_instructor_debug(state: AgentState) -> AgentState:
+def _answer_pipeline_debug(state: AgentState) -> AgentState:
     """
     Render a pipeline-introspection card.
     subintent dispatches to either a snapshot render or a static explanation.
@@ -405,7 +408,7 @@ def _answer_instructor_debug(state: AgentState) -> AgentState:
         state["crag_verdict"]     = "Correct"
         state["self_rag_verdict"] = "pass"
         state["guardrail_passed"] = True
-        state["guardrail_flags"]  = ["instructor_debug"]
+        state["guardrail_flags"]  = ["pipeline_debug"]
         return state
 
     # Snapshot render — reads from the prior-turn debug_snapshot
@@ -424,7 +427,7 @@ def _answer_instructor_debug(state: AgentState) -> AgentState:
         state["crag_verdict"]     = "Correct"
         state["self_rag_verdict"] = "pass"
         state["guardrail_passed"] = True
-        state["guardrail_flags"]  = ["instructor_debug"]
+        state["guardrail_flags"]  = ["pipeline_debug"]
         return state
 
     # Render snapshot as a Markdown debug card
@@ -471,7 +474,7 @@ def _answer_instructor_debug(state: AgentState) -> AgentState:
     state["crag_verdict"]     = "Correct"
     state["self_rag_verdict"] = "pass"
     state["guardrail_passed"] = True
-    state["guardrail_flags"]  = ["instructor_debug"]
+    state["guardrail_flags"]  = ["pipeline_debug"]
     return state
 
 
@@ -497,8 +500,8 @@ _GENRE_DESCRIPTIONS_EN = {
 }
 
 _SYSTEM_GENRE_COUNT = (
-    "You are Al-Nassikh (الناسخ — The Scribe), NABAT-AI's archival metadata agent. "
-    "The user asked a counting question that has been resolved deterministically — "
+    NASSIKH_PERSONA
+    + "The user asked a counting question that has been resolved deterministically — "
     "the numbers below are ALREADY computed from the ground-truth registry. "
     "Your job is to write a warm, factual two-paragraph answer (Arabic first, then "
     "English) that incorporates the EXACT numbers given. You MUST NOT invent any "
@@ -543,7 +546,7 @@ def _answer_count_by_genre(state: AgentState, genre: str) -> AgentState:
             "al_maktub": combined, "orthographic": combined, "al_mantuq": "",
             "citations": _citation_block("count_poems", "en"),
         }
-        state["citations_used"]   = ["anchor_registry_phase4_enriched.json"]
+        state["citations_used"]   = ["unified_registry.json"]
         state["passage_ids_used"] = []
         state["is_refusal"]       = False
         state["crag_verdict"]     = "Correct"
@@ -704,7 +707,7 @@ def deterministic_answer_node(state: AgentState) -> AgentState:
 
     Dispatch order:
       1. track="capabilities"     → bilingual capabilities blurb
-      2. track="instructor_debug" → debug snapshot or static explanation
+      2. track="pipeline_debug"   → debug snapshot or static explanation
       3. deterministic_intent.startswith("unsupported_dim_") → educational note
       4. registry stats (existing counting / age / provenance path)
 
@@ -743,10 +746,10 @@ def deterministic_answer_node(state: AgentState) -> AgentState:
         logger.info("deterministic_answer_node: track=capabilities")
         return _answer_capabilities(state)
 
-    # ── 2. Instructor debug ───────────────────────────────────────────────────
-    if track == "instructor_debug":
-        logger.info("deterministic_answer_node: track=instructor_debug subintent=%s", qc.get("intent_subintent"))
-        return _answer_instructor_debug(state)
+    # ── 2. Pipeline debug ─────────────────────────────────────────────────────
+    if track == "pipeline_debug":
+        logger.info("deterministic_answer_node: track=pipeline_debug subintent=%s", qc.get("intent_subintent"))
+        return _answer_pipeline_debug(state)
 
     # ── 2b. Image-grounded provenance ─────────────────────────────────────────
     # Delegated to the dedicated node — it touches the vector index, which

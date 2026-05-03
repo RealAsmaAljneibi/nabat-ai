@@ -178,7 +178,7 @@ If any axis < 3, return:
 
 ### Day 13 — Genre Heuristic Classifier
 
-**Goal:** Tag each of the 2,222 verse anchors with a genre label (غزل, رثاء, مديح, etc.) without a human-labelled gold set.
+**Goal:** Tag each manuscript verse anchor with a genre label (غزل, رثاء, مديح, etc.) without a human-labelled gold set.
 
 **AI-assisted approach:** I described the 10-genre taxonomy and asked the AI to suggest keyword patterns for each genre in both MSA and Khaleeji Arabic.
 
@@ -186,7 +186,7 @@ If any axis < 3, return:
 
 **My fix:** Added context-aware pattern weighting: words that appear in ≥3 genres are downweighted; words that uniquely predict a genre (e.g., `رثاء` for elegy, specific verb forms like `أندب`) are upweighted. This improved genre precision on spot-check from ~60% to ~82%.
 
-**Final coverage:** 82.9% of 2,222 anchors tagged. The 17.1% that abstain go to `غير_محدد` — this is intentional; forcing a label on every verse would be misleading.
+**Final coverage:** 82.9% of manuscript anchors tagged. The 17.1% that abstain go to `غير_محدد` — this is intentional; forcing a label on every verse would be misleading.
 
 ---
 

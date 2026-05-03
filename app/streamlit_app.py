@@ -370,60 +370,151 @@ def _run_agent2_query(state: dict) -> dict:
         }
 
 
+def _run_compose_query(text: str, persona: str) -> dict:
+    """
+    Route a user composition request to the creative pipeline.
+    Returns a CompositionState dict with final_output populated.
+    persona maps to CompositionContext.mode.
+
+    M9 cross-turn memory: passes the search session's last-5 turns into the
+    creative pipeline so a user who asked about Sheikh Zayed and then toggles
+    to compose mode gets context-aware composition.
+    """
+    try:
+        src_path = str(_REPO_ROOT / "src")
+        if src_path not in sys.path:
+            sys.path.insert(0, src_path)
+        from fatat_al_arab.orchestrator import run_creative  # type: ignore[import]
+
+        ctx: dict = {"mode": persona}
+        if persona == "scaffold":
+            ctx["target_poet"] = text
+            ctx["theme"]       = text
+        elif persona == "coauthor":
+            ctx["input_sadr"] = text
+        elif persona == "preserve":
+            ctx["target_poet"] = text
+        elif persona == "critique":
+            ctx["input_poem"] = text
+
+        # Thread last-5 search turns into the composition for cross-mode memory
+        history = _trim_history(st.session_state.get("history", []), max_turns=5)
+        return run_creative(ctx, conversation_history=history)
+    except Exception as exc:
+        logger.error("run_compose error: %s", exc)
+        return {
+            "composition_context": {"mode": persona},
+            "final_output": f"Creative pipeline error: {exc}",
+            "guardrail_passed": False,
+            "guardrail_flags": [str(exc)],
+            "agent_trace": [],
+        }
+
+
 def _track_spinner_msg(track: str) -> str:
     """Return the Phase-2 spinner message appropriate for the resolved track."""
     return {
         "capabilities":     "📜 Fatat Al-Arab is preparing capabilities… / فتاة العرب تجهّز الإمكانيات…",
         "registry_lookup":  "🗒️ Al-Nassikh (الناسخ) is counting… / الناسخ يحصي في الأرشيف…",
-        "instructor_debug": "🔬 Fatat Al-Arab is inspecting last turn… / فتاة العرب تفحص الدورة السابقة…",
+        "pipeline_debug":   "🔬 Fatat Al-Arab is inspecting last turn… / فتاة العرب تفحص الدورة السابقة…",
         "poetic_rag":       "📜 Fatat Al-Arab is searching manuscripts… / فتاة العرب تبحث في المخطوطات…",
     }.get(track, "📜 Fatat Al-Arab is searching manuscripts… / فتاة العرب تبحث في المخطوطات…")
 
 
+_COMPOSE_PERSONAS: list[dict] = [
+    {
+        "label":   "🌱 Al-Mulhim — Scaffold",
+        "persona": "scaffold",
+        "hint":    "Generate a compositional scaffold for a Nabati poet (style + thematic guide)",
+        "placeholder": "Enter a poet name or theme, e.g. 'الشيخ زايد' or 'poem about the desert'",
+    },
+    {
+        "label":   "🤝 Al-Musharik — Co-author",
+        "persona": "coauthor",
+        "hint":    "Suggest ajuz (second hemistich) candidates for your first hemistich",
+        "placeholder": "Type your first hemistich (صدر) here…",
+    },
+    {
+        "label":   "🪞 Al-Hafiz — Preserve",
+        "persona": "preserve",
+        "hint":    "Compose a verse in the manner of a deceased Nabati poet",
+        "placeholder": "Enter the poet's name, e.g. 'ابن راشد'",
+    },
+    {
+        "label":   "⚖️ Al-Muqayyim — Critique",
+        "persona": "critique",
+        "hint":    "Evaluate a submitted poem on meter, rhyme, authenticity and occasion",
+        "placeholder": "Paste your poem here for critique…",
+    },
+]
+
+
+def _render_compose_chips() -> None:
+    """
+    Four compose persona chips — clicking one sets compose_persona and
+    pre-fills a usage hint below the composer.
+    """
+    st.markdown('<div class="recipe-row">', unsafe_allow_html=True)
+    cols = st.columns(len(_COMPOSE_PERSONAS))
+    for col, p in zip(cols, _COMPOSE_PERSONAS):
+        with col:
+            active = st.session_state.get("compose_persona") == p["persona"]
+            label  = ("▶ " if active else "") + p["label"]
+            if st.button(label, key=f"cmp_{p['persona']}", use_container_width=True,
+                         help=p["hint"]):
+                st.session_state["compose_persona"] = p["persona"]
+                st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # Show usage hint for the active persona
+    active_p = next(
+        (p for p in _COMPOSE_PERSONAS
+         if p["persona"] == st.session_state.get("compose_persona", "scaffold")),
+        _COMPOSE_PERSONAS[0],
+    )
+    st.caption(f"💬 {active_p['hint']} — {active_p['placeholder']}")
+
+
 _RECIPES: list[dict] = [
     {
-        "label": "🏛️ Sheikh Zayed poetry",
-        "query": "أعطني شعر الشيخ زايد عن الوطن",
-        "hint":  "ECSSR corpus · UAE leadership verse",
+        "label": "🏛️ Shaikh Zayed Poetry",
+        "query": "أعطني أبيات من شعر الشيخ زايد",
+        "hint":  "Show Sheikh Zayed verse from the corpus",
+        "compose": False,
     },
     {
-        "label": "🌍 Cross-lingual search",
-        "query": "poems about longing for the homeland",
-        "hint":  "English → Arabic retrieval",
-    },
-    {
-        "label": "📖 غزل — Ibn Yahya",
-        "query": "ابحث عن أبيات الغزل في مخطوطة ابن يحيى",
-        "hint":  "Genre filter + manuscript resolver",
-    },
-    {
-        "label": "🗂️ How many manuscripts?",
-        "query": "كم مخطوطة في الأرشيف؟",
-        "hint":  "Al-Nassikh deterministic answer",
+        "label": "🎨 Get Help Creating Poetry",
+        "query": "",
+        "hint":  "Use AI creative personas to compose, critique, or co-author Nabati verse",
+        "compose": True,
     },
 ]
 
 
 def _render_recipe_cards() -> None:
     """
-    Why this exists: the demo panel needs to see capabilities immediately.
-    Four clickable pill cards — each targets a distinct pipeline path
-    (ECSSR corpus, cross-lingual, genre filter, Al-Nassikh registry lookup).
-    Clicking sets session_state["recipe_query"] and reruns the page;
-    the submit gate below picks it up like a typed query.
+    Two quick-start chips: one search recipe and one compose-mode activator.
+    Clicking the search chip sets recipe_query; clicking the compose chip
+    sets compose_mode=True and reruns.
     """
     st.markdown('<div class="recipe-row">', unsafe_allow_html=True)
-    cols = st.columns(len(_RECIPES))
-    for col, recipe in zip(cols, _RECIPES):
+    _gap, _c1, _c2, _gap2 = st.columns([1, 2, 2, 1])
+    _chip_cols = [_c1, _c2]
+    for col, recipe in zip(_chip_cols, _RECIPES):
         with col:
             if st.button(
-                f"{recipe['label']}\n_{recipe['hint']}_",
+                recipe["label"],
                 key=f"recipe_{recipe['label']}",
                 use_container_width=True,
-                help=recipe["query"],
+                help=recipe["hint"],
             ):
-                st.session_state["recipe_query"] = recipe["query"]
-                st.rerun()
+                if recipe.get("compose"):
+                    st.session_state["compose_mode"] = True
+                    st.rerun()
+                else:
+                    st.session_state["compose_mode"] = False  # ensure search path
+                    st.session_state["recipe_query"] = recipe["query"]
+                    st.rerun()
     st.markdown("</div>", unsafe_allow_html=True)
 
 
@@ -621,48 +712,120 @@ def _render_citations(citations: list[dict]) -> None:
         st.markdown(f"- {_format_citation(cit)}")
 
 
+def _format_trace_html(trace: list[dict], header: str = "") -> str:
+    """
+    Build the same monospace "thinking" HTML the static trace uses, so we can
+    progressively stream it into a live container during processing. Returns a
+    single HTML string ready for `container.markdown(html, unsafe_allow_html=True)`.
+    """
+    if not trace:
+        # Empty / pre-stream state: just show the header pulse
+        return (
+            "<div style='background:#f5f5f7;border-radius:8px;padding:10px 14px;"
+            "border:1px solid #e0e0e8;margin:8px 0;'>"
+            f"<div style='font-family:\"JetBrains Mono\",monospace;font-size:11.5px;"
+            f"color:#8a8a99;font-style:italic'>🤔 {header or 'Thinking…'}</div>"
+            "</div>"
+        )
+    lines: list[str] = []
+    if header:
+        lines.append(
+            f"<div style='font-family:\"JetBrains Mono\",monospace;font-size:11.5px;"
+            f"color:#555566;font-weight:600;margin-bottom:4px'>🤔 {header}</div>"
+        )
+    for entry in trace:
+        stage   = str(entry.get("stage", ""))
+        label   = entry.get("label", "")
+        summary = entry.get("summary", "")
+        detail  = entry.get("detail", "")
+        for token, dot in [("Correct", "🟢"), ("Ambiguous", "🟡"), ("Incorrect", "🔴")]:
+            if token in summary and not summary.startswith(dot):
+                summary = summary.replace(token, dot + " " + token, 1)
+        lines.append(
+            f"<div style='display:flex;gap:0;font-family:\"JetBrains Mono\",\"Fira Mono\","
+            f"monospace;font-size:11.5px;line-height:1.75;color:#8a8a99'>"
+            f"<span style='color:#555566;min-width:38px'>§{stage}</span>"
+            f"<span style='color:#9a9ab0;min-width:200px'>{label}</span>"
+            f"<span style='color:#8a8a99;flex:1'>{summary}</span>"
+            f"</div>"
+        )
+        if detail:
+            for dline in detail.split("\n"):
+                if dline.strip():
+                    lines.append(
+                        f"<div style='font-family:\"JetBrains Mono\",monospace;"
+                        f"font-size:10.5px;line-height:1.6;color:#666677;"
+                        f"padding-left:240px;font-style:italic'>↳ {dline.strip()}</div>"
+                    )
+    return (
+        "<div style='background:#f5f5f7;border-radius:8px;padding:10px 14px;"
+        "border:1px solid #e0e0e8;margin:8px 0;'>"
+        + "".join(lines)
+        + "</div>"
+    )
+
+
 def _render_agent_trace(result: dict) -> None:
     """
-    Unified Agent Reasoning Trace panel — single collapsible timeline showing
-    every decision the pipeline made, in chronological order.
-    This is Priority 1 of the Crown Prince Office demo: observers can watch
-    the system think, doubt itself, and self-correct without opening 5 expanders.
+    Unified Agent Reasoning Trace — a live timeline of every decision the pipeline
+    made, rendered as a visually rich "thinking" panel.  Always auto-expanded so
+    the demo audience can see the system reason in real time without clicking anything.
+    Shown even when the final answer is a refusal — the trace explains WHY.
     """
     trace: list[dict] = result.get("agent_trace") or []
     if not trace:
         return
 
-    # Colour verdicts for CRAG and Self-RAG entries
-    verdict_colour = {"pass": "🟢", "retry": "🟡", "flag": "🔴",
-                      "Correct": "🟢", "Ambiguous": "🟡", "Incorrect": "🔴"}
+    is_refusal = bool(result.get("is_refusal", False))
 
-    with st.expander("🤖 Fatat Al-Arab — Agent Reasoning Trace / فتاة العرب — مسار التفكير والتصحيح الذاتي", expanded=False):
+    header_label = (
+        "⛔ Reasoning trace — answer was refused"
+        if is_refusal else
+        f"🤔 Thinking… ({len(trace)} stages)"
+    )
+
+    # Expanded by default only when refused — on success it's a quiet detail.
+    with st.expander(header_label, expanded=is_refusal):
+        # Build a single HTML block so it renders as one continuous stream
+        lines_html = []
         for entry in trace:
-            icon    = entry.get("icon", "•")
-            stage   = entry.get("stage", "")
+            stage   = str(entry.get("stage", ""))
             label   = entry.get("label", "")
             summary = entry.get("summary", "")
             detail  = entry.get("detail", "")
 
-            # Colour-code verdicts embedded in the summary
-            for verdict, dot in verdict_colour.items():
-                summary = summary.replace(f"→ {verdict}", f"→ {dot} {verdict}")
+            # Inline verdict dot
+            for token, dot in [("Correct", "🟢"), ("Ambiguous", "🟡"), ("Incorrect", "🔴"),
+                                ("→ pass", "🟢 pass"), ("→ retry", "🟡 retry"), ("→ flag", "🔴 flag")]:
+                summary = summary.replace(token, dot + " " + token if not summary.startswith(dot) else summary)
 
-            st.markdown(
-                f"<div style='display:flex;gap:10px;align-items:baseline;padding:4px 0'>"
-                f"<span style='font-size:18px'>{icon}</span>"
-                f"<span style='color:#888;font-size:11px;min-width:28px'>§{stage}</span>"
-                f"<span style='font-weight:600;min-width:160px'>{label}</span>"
-                f"<span style='color:#ccc'>{summary}</span>"
-                f"</div>",
-                unsafe_allow_html=True,
+            stage_str  = f"§{stage:<4}"
+            label_str  = f"{label:<28}"
+            line = (
+                f"<div style='display:flex;gap:0;font-family:\"JetBrains Mono\",\"Fira Mono\","
+                f"monospace;font-size:11.5px;line-height:1.75;color:#8a8a99'>"
+                f"<span style='color:#555566;min-width:38px'>{stage_str}</span>"
+                f"<span style='color:#9a9ab0;min-width:200px'>{label_str}</span>"
+                f"<span style='color:#8a8a99;flex:1'>{summary}</span>"
+                f"</div>"
             )
+            lines_html.append(line)
             if detail:
-                # Render each line of multi-line detail separately so quoted
-                # rationale sentences and re-query hints each get their own row
-                for detail_line in detail.split("\n"):
-                    if detail_line.strip():
-                        st.caption(f"  ↳ {detail_line.strip()}")
+                for dline in detail.split("\n"):
+                    if dline.strip():
+                        lines_html.append(
+                            f"<div style='font-family:\"JetBrains Mono\",monospace;"
+                            f"font-size:10.5px;line-height:1.6;color:#666677;"
+                            f"padding-left:240px;font-style:italic'>↳ {dline.strip()}</div>"
+                        )
+
+        st.markdown(
+            "<div style='background:#f5f5f7;border-radius:8px;padding:10px 14px;"
+            "border:1px solid #e0e0e8;margin-top:4px'>"
+            + "".join(lines_html)
+            + "</div>",
+            unsafe_allow_html=True,
+        )
 
 
 def _render_genre_badge(result: dict) -> None:
@@ -811,7 +974,38 @@ def _render_default_view(result: dict) -> None:
 
     _render_citations(formatted.get("citations") or [])
     _render_folio_images_for_result(result)
-    _render_agent_trace(result)
+    _render_compose_in_this_voice_affordance(result)
+
+
+def _render_compose_in_this_voice_affordance(result: dict) -> None:
+    """
+    M9 Tier-1.3: when ≥3 of the top RRF results share a single poet, surface a
+    "🎨 Compose in this voice" affordance so the user can hop into Al-Hafiz
+    without retyping the poet's name. Zero-cost discovery of the composer.
+    """
+    rrf = result.get("rrf_top5") or []
+    if len(rrf) < 3:
+        return
+    from collections import Counter
+    poet_counts = Counter(
+        (r.get("poet_name") or "").strip()
+        for r in rrf if r.get("poet_name")
+    )
+    if not poet_counts:
+        return
+    top_poet, count = poet_counts.most_common(1)[0]
+    if count < 3 or not top_poet:
+        return
+    cols = st.columns([4, 1])
+    with cols[0]:
+        st.caption(f"🎯 The corpus has multiple verses by **{top_poet}** — would you like to compose in this voice?")
+    with cols[1]:
+        if st.button("🎨 Compose in this voice", key=f"compose_voice_{top_poet[:20]}",
+                     use_container_width=True):
+            st.session_state["compose_mode"] = True
+            st.session_state["compose_persona"] = "preserve"
+            st.session_state["recipe_query"] = top_poet
+            st.rerun()
 
 
 def _render_sidebar_folio_browser() -> None:
@@ -839,7 +1033,6 @@ def _render_sidebar_folio_browser() -> None:
         "By manuscript · بالمخطوطة",
         ms_options,
         key="folio_ms_sel",
-        label_visibility="collapsed",
     )
     if ms_sel and ms_sel != "— select —":
         idx = ms_options.index(ms_sel) - 1
@@ -858,7 +1051,6 @@ def _render_sidebar_folio_browser() -> None:
         "By poet · بالشاعر",
         poet_options,
         key="folio_poet_sel",
-        label_visibility="collapsed",
     )
     if poet_sel and poet_sel != "— select —":
         poet_imgs = get_images_for_poet(poet_sel)
@@ -1172,7 +1364,7 @@ def _render_ancestral_mirror_view(result: dict) -> None:
         st.info(
             "🔍 **لم يُعثر على هذا البيت في المجموعة**\n\n"
             "Not found in the indexed corpus. "
-            "Only verified passages from the 2,222-entry corpus (Phases 1–4) are returned."
+            "Only verified passages from the 4,031-entry corpus are returned."
         )
         return
 
@@ -1235,42 +1427,71 @@ def _render_workbench() -> None:
       6. Previous turns collapsible
     """
 
-    # ── Calligraphy plate ──────────────────────────────────────────────────────
-    st.markdown(_calligraphy_plate_html(), unsafe_allow_html=True)
-
     # ── View mode is fixed to Scholar (v2: mode pills removed per design spec) ─
     view_mode = "default"
 
-    # Session ID display
     import uuid
     if "session_id" not in st.session_state:
         st.session_state["session_id"] = "nbt-" + uuid.uuid4().hex[:4] + "-2026"
-    st.markdown(
-        f'<div style="text-align:right;margin-top:-8px;margin-bottom:8px">'
-        f'<span class="session-id">session · <span>{st.session_state["session_id"]}</span></span>'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
 
-    # ── 2. Lede heading — vertically centered in remaining viewport ──────────
+    # ── Lede heading ───────────────────────────────────────────────────────────
     st.markdown(
-        '<div style="height:clamp(16px,3vh,40px)"></div>',
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        '<div style="max-width:680px;margin:0 auto;text-align:center">'
-        '<h2 class="lede" style="text-align:center">What does the corpus <em>remember</em> for you today?</h2>'
-        '<p class="lede-sub" style="text-align:center;max-width:520px;margin:0 auto 24px">Pose a question in Arabic or English. '
-        'Attach a folio scan or recitation if you wish to ground the inquiry in a specific source.</p>'
+        '<div style="max-width:680px;margin:24px auto 0;text-align:center">'
+        '<h2 class="lede" style="text-align:center">How can the poetry space help you today?</h2>'
+        '<p class="lede-sub" style="text-align:center;max-width:520px;margin:0 auto 20px">Pose a question in Arabic or English. '
+        'Attach a folio scan or recitation to ground the inquiry in a specific source.</p>'
         '</div>',
         unsafe_allow_html=True,
     )
 
-    # ── Folio gallery (shown when user picks from sidebar browser) ────────────
-    _render_folio_gallery_panel()
+    # ── LLM health banner — shown only when inference is not ready ───────────
+    _pinfo = _get_provider_info()
+    if not _pinfo.get("ready_for_inference", True):
+        _prov = _pinfo.get("provider", "unknown")
+        _key_var = {
+            "openai":   "OPENAI_API_KEY",
+            "together": "TOGETHER_API_KEY",
+            "groq":     "GROQ_API_KEY",
+        }.get(_prov, "LLM_API_KEY")
+        if _prov == "stub":
+            st.info(
+                "**Offline mode** — LLM calls return canned stub responses. "
+                "Set `LLM_PROVIDER=openai` and `OPENAI_API_KEY` in `.env` for live answers.",
+                icon="ℹ️",
+            )
+        else:
+            st.warning(
+                f"**⚠️ API key not set for provider `{_prov}`** — all queries will return a refusal. "
+                f"Add `{_key_var}=sk-…` to your `.env` file and restart.",
+                icon="⚠️",
+            )
+    elif _pinfo.get("consecutive_failures", 0) >= 2:
+        st.warning(
+            "**⚠️ LLM returning errors** — the last 2+ calls failed. "
+            "Check your API key and provider status. Answers may be empty.",
+            icon="⚠️",
+        )
 
-    # ── Recipe cards — quick-start prompts for the demo panel ─────────────────
+    # ── Two quick-start chips ─────────────────────────────────────────────────
     _render_recipe_cards()
+
+    # ── Compose-mode banner (visible state for the sticky toggle) ─────────────
+    if st.session_state.get("compose_mode"):
+        _bcol1, _bcol2 = st.columns([6, 1])
+        with _bcol1:
+            st.markdown(
+                '<div style="background:#fdf3df;border:1px solid #c19a4a;'
+                'border-radius:8px;padding:8px 14px;margin:8px 0;'
+                'font-size:13px;color:#7a5d2a;">'
+                '🎨 <b>Creative mode is ON</b> — your next message goes to Al-Mulhim. '
+                'Click <b>Switch to Search</b> to ask the corpus instead.'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+        with _bcol2:
+            if st.button("🔍 Switch to Search", key="switch_to_search_btn", use_container_width=True):
+                st.session_state["compose_mode"] = False
+                st.rerun()
 
     # ── 3. Query composer ─────────────────────────────────────────────────────
     # st.chat_input with accept_file + accept_audio — icons render inside the
@@ -1288,6 +1509,26 @@ def _render_workbench() -> None:
     if not send_clicked:
         # Nothing submitted — fall through to answer display
         pass
+    elif st.session_state.get("compose_mode"):
+        # ── Compose mode — route to creative pipeline ─────────────────────────
+        typed_text = (composer_text or "").strip()
+        if not typed_text:
+            st.error("Please describe what you'd like to compose, critique, or preserve.")
+        else:
+            persona = st.session_state.get("compose_persona", "scaffold")
+            persona_label = {
+                "scaffold": "Al-Mulhim الملهِم",
+                "coauthor": "Al-Musharik المشارك",
+                "preserve": "Al-Hafiz الحافظ",
+                "critique": "Al-Muqayyim المقيّم",
+            }.get(persona, "Creative Agent")
+            with st.spinner(f"🎨 {persona_label} is composing… / يُبدع…"):
+                compose_result = _run_compose_query(typed_text, persona)
+            st.session_state["last_compose_result"] = compose_result
+            st.session_state["last_result"] = None  # clear search result
+            # Auto-revert so the next message defaults back to Search.
+            # The user can click "Get Help Creating Poetry" again to compose more.
+            st.session_state["compose_mode"] = False
     else:
         typed_text = (composer_text or "").strip()
         ocr_text   = ""
@@ -1354,9 +1595,19 @@ def _render_workbench() -> None:
                 session_id     = st.session_state.get("session_id")
                 turn_idx       = len(prior_history)
 
+                # ── ChatGPT-style live thinking container ─────────────────────
+                # Sits right below the composer and updates in-place as each
+                # phase completes. The static expander still renders below the
+                # answer for the full collapsed trace.
+                live_thinking = st.empty()
+                live_thinking.markdown(
+                    _format_trace_html([], header="Understanding your question…"),
+                    unsafe_allow_html=True,
+                )
+
                 # Phase 1 — Agent 1: query understanding + routing
                 with st.spinner("🔍 Fatat Al-Arab is understanding your question… / فتاة العرب تفهم سؤالك…"):
-                    # Pass prior-turn result as debug_snapshot for instructor_debug queries
+                    # Pass prior-turn result as debug_snapshot for pipeline_debug queries
                     debug_snap = st.session_state.get("last_result")
                     agent1_state = _run_agent1_query(
                         effective_query,
@@ -1367,6 +1618,16 @@ def _render_workbench() -> None:
                         input_modality=input_modality,
                         debug_snapshot=debug_snap,
                     )
+
+                # Stream Agent 1 trace immediately so the user sees the routing
+                # decisions while Agent 2 is still running.
+                live_thinking.markdown(
+                    _format_trace_html(
+                        agent1_state.get("agent_trace") or [],
+                        header="Searching the corpus…",
+                    ),
+                    unsafe_allow_html=True,
+                )
 
                 track = (agent1_state.get("query_context") or {}).get("track", "poetic_rag")
 
@@ -1390,6 +1651,18 @@ def _render_workbench() -> None:
                 with st.spinner(phase2_msg):
                     result = _run_agent2_query(agent1_state)
 
+                # Final live update — full trace including Agent 2 stages.
+                # The static expander below the answer renders the same content;
+                # we leave the live container in place so the user sees what just
+                # happened without any flash.
+                live_thinking.markdown(
+                    _format_trace_html(
+                        result.get("agent_trace") or [],
+                        header="Done — see the answer below.",
+                    ),
+                    unsafe_allow_html=True,
+                )
+
                 st.session_state["last_result"] = result
 
                 history = st.session_state.get("history", [])
@@ -1405,6 +1678,11 @@ def _render_workbench() -> None:
                 st.session_state["pending_image"] = None
                 st.session_state["_voice_pending"] = None
                 st.session_state["last_input_modality"] = "text"
+
+    # ── Thinking trace — shown right below the composer ───────────────────────
+    _trace_result = st.session_state.get("last_result") or st.session_state.get("last_compose_result")
+    if _trace_result:
+        _render_agent_trace(_trace_result)
 
     # ── Previous turns (shown above answer if history exists) ─────────────────
     history: list[dict] = st.session_state.get("history", [])
@@ -1422,7 +1700,35 @@ def _render_workbench() -> None:
                     unsafe_allow_html=True,
                 )
 
-    # ── 6. Answer display ──────────────────────────────────────────────────────
+    # ── 6a. Compose result display ────────────────────────────────────────────
+    compose_result = st.session_state.get("last_compose_result")
+    if compose_result is not None:
+        persona = (compose_result.get("composition_context") or {}).get("mode", "scaffold")
+        persona_names = {
+            "scaffold": "🌱 Al-Mulhim — Compositional Scaffold",
+            "coauthor": "🤝 Al-Musharik — Ajuz Candidates",
+            "preserve": "🪞 Al-Hafiz — Voice Preservation",
+            "critique": "⚖️ Al-Muqayyim — Poem Critique",
+        }
+        st.markdown(
+            f'<div class="det-badge">🎨 {persona_names.get(persona, "Creative Output")}</div>',
+            unsafe_allow_html=True,
+        )
+        output = compose_result.get("final_output") or ""
+        if not compose_result.get("guardrail_passed", True) and not output:
+            flags = compose_result.get("guardrail_flags") or []
+            st.warning(f"Guardrail blocked this composition: {', '.join(flags) or 'unknown reason'}")
+        else:
+            st.markdown(
+                f'<div class="answer-card"><div class="prose-answer">'
+                f'<div class="rtl-verse" style="white-space:pre-wrap">{output}</div>'
+                f'</div></div>',
+                unsafe_allow_html=True,
+            )
+            if attribution := compose_result.get("attribution_badge"):
+                st.caption(f"⚠️ {attribution}")
+
+    # ── 6b. Search answer display ─────────────────────────────────────────────
     result = st.session_state.get("last_result")
     if result is None:
         return
@@ -1436,7 +1742,7 @@ def _render_workbench() -> None:
                                    "det-badge"),
         "capabilities":         ('❓', "Capabilities overview · no retrieval used",
                                    "det-badge"),
-        "instructor_debug":     ('🔬', "Inspector / debug view · pipeline internals",
+        "pipeline_debug":       ('🔬', "Pipeline debug view · pipeline internals",
                                    "det-badge"),
         "unsupported_dimension":('⚠️', "Unsupported dimension — not yet indexed in this corpus",
                                    "det-badge"),
@@ -1448,6 +1754,7 @@ def _render_workbench() -> None:
             break
 
     if badge_info is not None:
+        import re as _re
         icon, label, css_class = badge_info
         st.markdown(
             f'<div class="{css_class}">{icon} {label}</div>',
@@ -1457,10 +1764,23 @@ def _render_workbench() -> None:
         ar_part = parts[0].strip()
         en_part = parts[1].strip() if len(parts) > 1 else ""
 
-        en_block = f'<div style="margin-top:10px;font-size:13px;color:var(--ink3);direction:ltr;text-align:left">{en_part}</div>' if en_part else ""
+        # Convert **bold** markdown to <strong> so it renders in HTML context
+        def _md_to_html(text: str) -> str:
+            text = _re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
+            text = text.replace("\n", "<br/>")
+            return text
+
+        ar_html = _md_to_html(ar_part)
+        en_html = _md_to_html(en_part)
+        en_block = (
+            f'<div style="margin-top:12px;font-size:13px;color:var(--ink3);'
+            f'direction:ltr;text-align:left;border-top:1px solid rgba(255,255,255,.08);'
+            f'padding-top:10px">{en_html}</div>'
+            if en_html else ""
+        )
         st.markdown(
             f'<div class="answer-card"><div class="prose-answer">'
-            f'<div class="rtl-verse">{ar_part}</div>'
+            f'<div class="rtl-verse">{ar_html}</div>'
             f'{en_block}'
             f'</div></div>',
             unsafe_allow_html=True,
@@ -1761,15 +2081,15 @@ def _render_archive_manager() -> None:
 
     STEPS = [
         ("var(--ink)",    "1", "Enter metadata",
-         "Fill in <code>matla_text</code>, <code>poet_name</code>, <code>manuscript_short_key</code>, and <code>page_number</code>. Add <code>occasion</code> if known — it triples genre accuracy. Append the entry to <code>anchor_registry_full.json</code> (or run <code>scripts/ingest_phases_123.py</code> for PAGE-XML exports)."),
+         "Fill in <code>matla_text</code>, <code>poet_name</code>, <code>manuscript_short_key</code>, and <code>page_number</code>. Add <code>occasion</code> if known — it triples genre accuracy. Append the entry to <code>data/unified_registry.json</code> (or run <code>scripts/ingest_phases_123.py</code> for PAGE-XML exports, then run <code>scripts/build_unified_registry.py</code> to merge all source types)."),
         ("var(--sepia)",  "2", "Check the corpus",
          "Before uploading new scans, search the Scholar Workbench to confirm the poem is not already indexed. Duplicate entries dilute retrieval quality."),
         ("var(--indigo)", "3", "Preview in Operator Tools",
          "If you have a page scan (PNG, JPG, or PDF), upload it below to run triage, bleed suppression, and standardisation. If the manuscript is new, self-host eScriptorium for full HTR transcription."),
         ("var(--jade)",   "4", "Run the enrichment script",
-         "<code>PYTHONPATH=src python scripts/enrich_genre_heuristic.py --registry data/ground_truth/anchor_registry_full.json --output data/ground_truth/anchor_registry_full_enriched.json</code> — classifies genre and emotion, then run <code>scripts/propagate_poet_names.py</code> to fill in poet attributions from the Phase-4 TOC."),
+         "<code>PYTHONPATH=src python scripts/enrich_genre_heuristic.py --registry data/unified_registry.json --output data/unified_registry_enriched.json</code> — classifies genre and emotion across all source types (manuscript, oral, online)."),
         ("var(--sepia-deep)", "5", "Rebuild the index",
-         "Use the Rebuild Index button below — or run <code>python scripts/rebuild_index.py --registry data/ground_truth/anchor_registry_full_enriched.json --force</code>. The new poem is now searchable in the Scholar Workbench."),
+         "Use the Rebuild Index button below — or run <code>python scripts/rebuild_index.py --registry data/unified_registry.json --force</code>. The new poem is now searchable in the Scholar Workbench."),
     ]
 
     # Horizontal stepper
@@ -2048,7 +2368,7 @@ bash setup.sh</pre>
         '<p style="font-size:13.5px;color:var(--ink2);line-height:1.7;margin-bottom:16px">'
         "The Scholar Workbench searches a pre-built vector index — it cannot find newly added bayts "
         "until the index is rebuilt. Rebuilding re-encodes every bayt in the registry "
-        "(2,222 bayts across Phases 1–4 at nine chunk levels) into searchable vectors. "
+        "(4,031 entries across all sources at nine chunk levels) into searchable vectors. "
         "Run this once after you finish adding or editing entries in the registry. "
         "It takes about 60–90 seconds and the result is immediately live in Tab A."
         "</p>",
@@ -2061,7 +2381,7 @@ bash setup.sh</pre>
         st.warning("Index not found — rebuild required before Scholar Workbench can answer queries.")
 
     if st.button("🔄 Rebuild index now", key="rebuild_btn"):
-        with st.spinner("Rebuilding — encoding 2,222 bayts × 9 chunk levels…"):
+        with st.spinner("Rebuilding — encoding 4,031 entries × 9 chunk levels…"):
             rb = _rebuild_index()
         if rb["success"]:
             s = rb["stats"]
@@ -2107,10 +2427,18 @@ def _get_era_genre_distribution() -> dict[str, dict[str, int]]:
             else:
                 return "Late · 1890–1940"
 
-        # Load anchor registry
-        reg_path = _REPO_ROOT / "data" / "ground_truth" / "anchor_registry_phase4_enriched.json"
-        if not reg_path.exists():
-            reg_path = _REPO_ROOT / "data" / "ground_truth" / "anchor_registry_phase4.json"
+        # Load anchor registry — prefer unified (all source types)
+        _ar_candidates = [
+            _REPO_ROOT / "data" / "unified_registry.json",
+            _REPO_ROOT / "data" / "ground_truth" / "anchor_registry_full_enriched.json",
+            _REPO_ROOT / "data" / "ground_truth" / "anchor_registry_phase4_enriched.json",
+            _REPO_ROOT / "data" / "ground_truth" / "anchor_registry_phase4.json",
+        ]
+        reg_path = _ar_candidates[-1]
+        for _p in _ar_candidates:
+            if _p.exists():
+                reg_path = _p
+                break
         anchors = json.loads(reg_path.read_text(encoding="utf-8"))
 
         era_genre: dict[str, dict[str, int]] = {}
@@ -2243,9 +2571,10 @@ def _render_sidebar() -> None:
         from al_nassikh.corpus_stats import count_bayts as _count_bayts  # type: ignore[import]
         _total_anchors = _count_bayts()
     except Exception:
-        _total_anchors = 2222
+        _total_anchors = 4031
 
-    # ── Back button (top-left, replaces corpus stats) ──────────────────────────
+    # ── Back button (top-left) — hidden on hero page since we are already home ──
+    _current_page = st.session_state.get("page", "hero")
     with st.sidebar:
         st.markdown("""
 <style>
@@ -2265,9 +2594,14 @@ def _render_sidebar() -> None:
 }
 </style>
 """, unsafe_allow_html=True)
-        if st.button("← Back", key="sidebar_back"):
-            st.session_state["page"] = "hero"
-            st.rerun()
+        if _current_page != "hero":
+            if st.button("← Back", key="sidebar_back"):
+                st.session_state["page"] = "hero"
+                st.rerun()
+        else:
+            if st.button("Enter the workbench →", key="sidebar_enter_wb"):
+                st.session_state["page"] = "workbench"
+                st.rerun()
 
     st.sidebar.markdown('<div class="s-divider" style="margin:3px 0"></div>', unsafe_allow_html=True)
 
@@ -2397,11 +2731,6 @@ div[data-testid="stSidebarContent"] .tab-nav-btn.inactive button:hover {
 </div>
 """, unsafe_allow_html=True)
 
-    # ── Folio Browse ──────────────────────────────────────────────────────────
-    st.sidebar.markdown('<div class="s-divider" style="margin:3px 0"></div>', unsafe_allow_html=True)
-    st.sidebar.markdown('<div class="s-label">🖼️ Browse Folios / تصفح المخطوطات</div>', unsafe_allow_html=True)
-    _render_sidebar_folio_browser()
-
     st.sidebar.markdown(
         '<div class="footer-note">Where poetry once lost to the wind<br/>is given form again</div>',
         unsafe_allow_html=True,
@@ -2516,6 +2845,14 @@ html, body, [data-testid="stApp"] {
 section[data-testid="stSidebar"] {
   background: rgba(239,229,208,0.65) !important;
   border-right: 1px solid var(--line) !important;
+  min-width: 220px !important;
+  display: block !important;
+  visibility: visible !important;
+  transform: none !important;
+}
+/* Hide the collapse arrow so the sidebar stays pinned open for demo */
+[data-testid="collapsedControl"] {
+  display: none !important;
 }
 section[data-testid="stSidebar"] > div:first-child {
   background: transparent !important;
@@ -2585,6 +2922,18 @@ section[data-testid="stSidebar"] .stButton button {
   width: 6px; height: 6px;
   border-radius: 50%;
   background: var(--jade);
+  flex-shrink: 0;
+}
+.dot-amber {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #D4A017;
+  flex-shrink: 0;
+}
+.dot-warn {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #C0392B;
   flex-shrink: 0;
 }
 .provider-name {
@@ -3262,23 +3611,57 @@ def _sidebar_corpus_html(total: int = 1502, transcribed_pct: int = 64, translate
 
 
 def _sidebar_provider_html(provider_info: dict) -> str:
-    name    = provider_info.get("provider", "—")
-    primary = provider_info.get("model_primary", "—")
-    fallback= provider_info.get("using_fallback", False)
-    status  = "fallback" if fallback else "primary"
+    name        = provider_info.get("provider", "—")
+    model       = provider_info.get("model_primary", "—")
+    key_set     = provider_info.get("api_key_set", True)
+    ready       = provider_info.get("ready_for_inference", True)
+    tier        = int(provider_info.get("tier", 1))
+    tier_total  = int(provider_info.get("tier_total", 1))
+    tier_label  = provider_info.get("tier_label", "primary")
+    chain       = provider_info.get("tier_chain", [(name, model)])
+
+    if not ready:
+        dot_class  = "dot-warn"
+        status_txt = "⚠️ API key missing — set in .env"
+    elif tier > 1:
+        dot_class  = "dot-amber"
+        status_txt = f"tier {tier} of {tier_total} · {tier_label}"
+    else:
+        dot_class  = "dot-jade"
+        status_txt = f"tier {tier} of {tier_total} · {tier_label}"
+
+    # Three-dot chain: ✓ = passed, ● = active, ○ = waiting
+    dots_html = ""
+    for i, (p, m) in enumerate(chain):
+        t = i + 1
+        if t < tier:
+            sym, col = "✓", "#6B8F5E"
+        elif t == tier:
+            sym = "●"
+            col = "#C0392B" if not ready else ("#D4A017" if tier > 1 else "#4A7C59")
+        else:
+            sym, col = "○", "#9E9E9E"
+        dots_html += (
+            f'<span title="{p}/{m}" '
+            f'style="color:{col};font-size:10px;margin-right:3px">{sym}</span>'
+        )
+
     return f"""
 <div class="s-label" style="margin-top:4px">LLM provider</div>
 <div class="provider-card">
-  <div class="dot-jade"></div>
+  <div class="{dot_class}"></div>
   <div style="flex:1">
-    <div class="provider-name">{name} · {primary}</div>
-    <span class="provider-detail">{status} model active</span>
+    <div class="provider-name">{name} · {model}</div>
+    <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+      <span class="provider-detail">{status_txt}</span>
+      <span style="letter-spacing:2px">{dots_html}</span>
+    </div>
   </div>
 </div>
 """
 
 
-def _sidebar_index_html(index_ok: bool, total_anchors: int = 2222, total_chunks: int = 4750) -> str:
+def _sidebar_index_html(index_ok: bool, total_anchors: int = 4031, total_chunks: int = 8415) -> str:
     vector_status = '<span class="idx-ok">✓ healthy</span>' if index_ok else '<span class="idx-warn">not built</span>'
     bm25_status   = '<span class="idx-ok">✓ healthy</span>' if index_ok else '<span class="idx-warn">not built</span>'
     chunks_display = f"{total_chunks:,} chunks" if index_ok else "—"
@@ -3361,8 +3744,6 @@ def _render_hero() -> None:
     st.markdown("""
 <style>
 /* ── Hide Streamlit chrome on hero ───────────────── */
-section[data-testid="stSidebar"],
-[data-testid="stSidebarCollapsedControl"],
 [data-testid="stHeader"],
 [data-testid="stToolbar"],
 footer { display: none !important; }
@@ -3514,7 +3895,7 @@ def _render_browse_corpus() -> None:
     Browse Corpus page — a simple searchable table of all verse anchors.
     Why this exists: the v2 hero has a "Browse the corpus" button that
     routes to page="browse". This gives users a lightweight way to explore
-    the 2,222 anchors without posing a full RAG query.
+    the 4,031 entries without posing a full RAG query.
     """
     # ── Masthead with back button ─────────────────────────────────────────────
     _render_masthead_with_back()
@@ -3522,27 +3903,29 @@ def _render_browse_corpus() -> None:
     st.markdown('<div class="main-content">', unsafe_allow_html=True)
     st.markdown(
         '<h2 class="lede">Browse the corpus — <em>تصفّح الأرشيف</em></h2>'
-        '<p class="lede-sub">2,222 bayts across all four phases (Phases 1–4): '
-        '720 fully-transcribed bayts from ~39 poems (Phase 1–3) · '
-        '1,502 matla bayts from TOC poems (Phase 4). '
+        '<p class="lede-sub">4,031 entries across all sources: '
+        '2,175 manuscript anchors (Phases 1–4) · '
+        '106 oral tradition entries · '
+        '1,750 online digitized poems. '
         'Filter by poet, manuscript, or genre.</p>',
         unsafe_allow_html=True,
     )
 
-    # ── Load registry — prefer full enriched > cleaned > phase4-only ──────────
-    # Why prefer full_enriched: it contains all 2,222 anchors across Phases 1–4
-    # including the full-verse Phase 1–3 data ingested 2026-04-26. The cleaned
-    # and phase4-only files are kept as fallbacks for environments where the
-    # full registry hasn't been built yet.
-    for registry_candidate in [
-        "anchor_registry_full_enriched.json",
-        "anchor_registry_full.json",
-        "anchor_registry_phase4_cleaned.json",
-        "anchor_registry_phase4_enriched.json",
-        "anchor_registry_phase4.json",
-    ]:
-        registry_path = _REPO_ROOT / "data" / "ground_truth" / registry_candidate
-        if registry_path.exists():
+    # ── Load registry — prefer unified (all source types) > manuscript-only fallbacks ──
+    # Why unified_registry first: it includes oral_tradition (106) and online_digitized
+    # (1750) alongside the 2175 manuscript entries. Fallbacks keep old setups working.
+    _registry_candidates = [
+        (_REPO_ROOT / "data" / "unified_registry.json", None),
+        (_REPO_ROOT / "data" / "ground_truth" / "anchor_registry_full_enriched.json", None),
+        (_REPO_ROOT / "data" / "ground_truth" / "anchor_registry_full.json", None),
+        (_REPO_ROOT / "data" / "ground_truth" / "anchor_registry_phase4_cleaned.json", None),
+        (_REPO_ROOT / "data" / "ground_truth" / "anchor_registry_phase4_enriched.json", None),
+        (_REPO_ROOT / "data" / "ground_truth" / "anchor_registry_phase4.json", None),
+    ]
+    registry_path = _REPO_ROOT / "data" / "ground_truth" / "anchor_registry_phase4.json"
+    for _rp, _ in _registry_candidates:
+        if _rp.exists():
+            registry_path = _rp
             break
 
     records: list[dict] = []
@@ -3850,11 +4233,12 @@ def _render_governance() -> None:
         else:
             st.warning("Index not built yet. Run `python scripts/rebuild_index.py --force`.")
     with h3:
+        robustness_total = eval_raw.get("robustness", {}).get("total_queries", 0)
         if eval_raw.get("run_date"):
             st.markdown(
                 f"**Last evaluation** · {eval_raw.get('run_date', '—')}<br>"
                 f"<span style='font-size:12px;color:#5A5853;'>provider: <code>{eval_raw.get('provider', '?')}</code> · "
-                f"{eval_raw.get('correctness', {}).get('non_refusal_count', 0) + eval_raw.get('correctness', {}).get('ooc_total', 0)} queries</span>",
+                f"{robustness_total} queries</span>",
                 unsafe_allow_html=True,
             )
         else:
@@ -3893,31 +4277,44 @@ def _render_governance() -> None:
             (" Re-run with a live LLM key for the demo number." if provider_in_eval == "stub" else "")
         )
 
-    # ── Tier 2 — coverage (informational) ────────────────────────────────────
-    st.markdown("### Tier 2 — Coverage · التغطية (إعلامية)")
-    rec_at5 = correctness.get("recall_at_5", 0.0)
-    ref_hit = correctness.get("reference_hit_rate", 0.0)
-    ref_active = correctness.get("reference_hit_rate_active", 0)
-    ref_total  = correctness.get("reference_hit_rate_total", 0)
+    # ── Tier 2 — coverage ────────────────────────────────────────────────────
+    st.markdown("### Tier 2 — Coverage · التغطية")
+    rec_at5         = correctness.get("recall_at_5", 0.0)
+    rec_at5_relaxed = correctness.get("recall_at_5_relaxed", 0.0)
+    rec_target      = correctness.get("recall_at_5_target", 0.75)
+    ref_hit         = correctness.get("reference_hit_rate", 0.0)
+    ref_active      = correctness.get("reference_hit_rate_active", 0)
+    ref_total       = correctness.get("reference_hit_rate_total", 0)
 
-    c3, c4 = st.columns(2)
+    # Exact recall: low because retriever targets right manuscript but not exact page
+    rec_exact_status = "ok" if rec_at5 >= rec_target else ("warn" if rec_at5 >= 0.3 else "fail")
+    # Relaxed recall: correct manuscript found — the stronger signal
+    rec_relax_status = "ok" if rec_at5_relaxed >= rec_target else "warn"
+
+    c3, c4, c5 = st.columns(3)
     with c3:
         _gov_metric_card(
-            "Manuscript anchor recall@5", "استرجاع المخطوطات الذهبية",
-            f"{rec_at5*100:.1f}%", "context-dependent",
-            "info",
-            "Fraction of fixtures with a `gold_anchor_ids` list whose answer surfaces "
-            "at least one gold manuscript chunk in the post-RRF top-5. Adding the "
-            "reference corpus naturally trades anchor slots for cultural context — "
-            "this number alone is not a quality verdict."
+            "Recall@5 exact (page-level)", "استرجاع دقيق (مستوى الصفحة)",
+            f"{rec_at5*100:.1f}%", f"≥ {rec_target*100:.0f}%",
+            rec_exact_status,
+            "At least one gold anchor_id (exact page+row) appears in the post-RRF top-5. "
+            "Low exact / high relaxed = retriever finds the right manuscript but ranks adjacent verses higher."
         )
     with c4:
+        _gov_metric_card(
+            "Recall@5 relaxed (manuscript)", "استرجاع مرن (مستوى المخطوطة)",
+            f"{rec_at5_relaxed*100:.1f}%", f"≥ {rec_target*100:.0f}%",
+            rec_relax_status,
+            "At least one retrieved chunk is from the correct manuscript. "
+            "The primary quality signal when the corpus spans 25 manuscripts."
+        )
+    with c5:
         _gov_metric_card(
             "Reference hit rate", "نسبة استدعاء المراجع",
             f"{ref_hit*100:.1f}%", "(informational)",
             "info",
             f"{ref_active}/{ref_total} in-corpus queries activate ≥1 reference (PDF) chunk in top-5. "
-            "Tracks the value of the new scholarly layer."
+            "Tracks the value of the scholarly reference layer."
         )
 
     # ── Tier 3 — efficiency ──────────────────────────────────────────────────
@@ -3925,25 +4322,107 @@ def _render_governance() -> None:
     eff = eval_raw.get("efficiency", {})
     p50 = eff.get("p50_ms", 0)
     p95 = eff.get("p95_ms", 0)
+    mean_ms = eff.get("mean_ms", 0)
     p50_target_ms = eff.get("p50_target_ms", 4000)
     p95_target_ms = eff.get("p95_target_ms", 8000)
-    p50_status = "ok" if p50 < p50_target_ms else "warn"
-    p95_status = "ok" if p95 < p95_target_ms else "warn"
+    p50_status = "ok" if p50 < p50_target_ms else ("warn" if p50 < p50_target_ms * 2 else "fail")
+    p95_status = "ok" if p95 < p95_target_ms else ("warn" if p95 < p95_target_ms * 2 else "fail")
 
-    c5, c6 = st.columns(2)
-    with c5:
+    e1, e2, e3 = st.columns(3)
+    with e1:
         _gov_metric_card(
             "p50 end-to-end latency", "زمن الاستجابة (وسيط)",
             f"{p50:.0f} ms", f"< {p50_target_ms} ms",
             p50_status,
             "Live-mode targets assume Together.ai or Groq (≈300–800 ms per call, 5–8 calls per query)."
         )
-    with c6:
+    with e2:
         _gov_metric_card(
             "p95 end-to-end latency", "زمن الاستجابة (95%)",
             f"{p95:.0f} ms", f"< {p95_target_ms} ms",
             p95_status,
-            "Stub-mode latencies (~50 ms) are not representative of the demo runtime."
+            "Stub-mode latencies (~50 ms) are not representative of the live demo runtime."
+        )
+    with e3:
+        _gov_metric_card(
+            "Mean latency", "متوسط زمن الاستجابة",
+            f"{mean_ms:.0f} ms", f"n={eff.get('sample_count', 0)}",
+            "info",
+            "Average across all 60 evaluation queries (20 scholar + 20 OOC + 20 bilingual)."
+        )
+
+    # ── Per-stage timing waterfall ───────────────────────────────────────────
+    per_stage = eff.get("per_stage_avg_ms") or {}
+    if per_stage:
+        st.markdown("#### Per-stage average latency · زمن كل مرحلة")
+        try:
+            import pandas as _pd
+            df = _pd.DataFrame(
+                {"stage": list(per_stage.keys()), "avg ms": list(per_stage.values())}
+            ).set_index("stage")
+            st.bar_chart(df, height=180)
+        except ImportError:
+            for k, v in per_stage.items():
+                st.markdown(f"- `{k}`: {v:.0f} ms")
+
+    # ── CRAG verdict distribution ────────────────────────────────────────────
+    st.markdown("---")
+    crag_dist = correctness.get("crag_verdict_distribution") or {}
+    if crag_dist:
+        st.markdown("### CRAG verdict distribution · توزيع تقييم الاسترجاع")
+        c_crag, c_info = st.columns([2, 3])
+        with c_crag:
+            try:
+                import pandas as _pd
+                df = _pd.DataFrame(
+                    {"verdict": list(crag_dist.keys()), "count": list(crag_dist.values())}
+                ).set_index("verdict")
+                st.bar_chart(df, height=200)
+            except ImportError:
+                for k, v in crag_dist.items():
+                    st.markdown(f"- {k}: {v}")
+        with c_info:
+            total_crag = sum(crag_dist.values())
+            correct_n  = crag_dist.get("Correct", 0)
+            ambig_n    = crag_dist.get("Ambiguous", 0)
+            wrong_n    = crag_dist.get("Incorrect", 0)
+            st.markdown(
+                f"**Correct** {correct_n}/{total_crag} ({correct_n/total_crag*100:.0f}%) — "
+                "retrieval graded as fully relevant; no re-query triggered.\n\n"
+                f"**Ambiguous** {ambig_n}/{total_crag} ({ambig_n/total_crag*100:.0f}%) — "
+                "partial match; CRAG Loop A re-queries with an LLM-generated hint.\n\n"
+                f"**Incorrect** {wrong_n}/{total_crag} ({wrong_n/total_crag*100:.0f}%) — "
+                "no relevant passages; CRAG Loop B expands the search strategy."
+            )
+
+    # ── Robustness loop activation ───────────────────────────────────────────
+    robustness = eval_raw.get("robustness") or {}
+    if robustness.get("total_queries"):
+        st.markdown("### Robustness — failure-budget activation · تنشيط حدود الإخفاق")
+        _total_q = robustness["total_queries"]
+        # Compute raw counts for metrics that don't have a pre-computed count field
+        _budget_count   = round(robustness.get("self_rag_budget_exhaustion_rate", 0) * _total_q)
+        _fallback_count = round(robustness.get("fallback_llm_rate", 0) * _total_q)
+        b1, b2, b3, b4 = st.columns(4)
+        b1.metric(
+            "CRAG re-query rate",
+            f"{robustness.get('crag_requery_rate', 0)*100:.1f}%",
+            f"{robustness.get('crag_requery_count', 0)} / {_total_q} queries",
+        )
+        b2.metric(
+            "Self-RAG retry rate",
+            f"{robustness.get('self_rag_retry_rate', 0)*100:.1f}%",
+            f"{robustness.get('self_rag_retry_count', 0)} / {_total_q} queries",
+        )
+        b3.metric(
+            "Budget exhausted (2× retry)",
+            f"{robustness.get('self_rag_budget_exhaustion_rate', 0)*100:.1f}%",
+            f"{_budget_count} / {_total_q} queries",
+        )
+        b4.metric(
+            "Fallback LLM rate",
+            f"{robustness.get('fallback_llm_rate', 0)*100:.1f}%",
+            f"{_fallback_count} / {_total_q} queries",
         )
 
     # ── Corpus distribution ──────────────────────────────────────────────────
@@ -3951,10 +4430,8 @@ def _render_governance() -> None:
     st.markdown("### Corpus composition · مكوّنات الفهرس")
     by_level = corpus_stats.get("by_level") or {}
     if by_level:
-        # Sort levels in a meaningful order: row-backed → aggregate → reference
         order = ["verse", "group", "poem", "manuscript", "poet", "era", "genre", "emotion", "reference"]
         rows = [(lv, by_level.get(lv, 0)) for lv in order if lv in by_level]
-        # Append any unexpected levels
         for k, v in by_level.items():
             if k not in order:
                 rows.append((k, v))
@@ -3971,8 +4448,6 @@ def _render_governance() -> None:
         st.info("No chunks indexed yet.")
 
     # ── Phase ingestion summary ──────────────────────────────────────────────
-    # Why: the corpus now spans all four phases; a reviewer needs to see the
-    # anchor counts per phase at a glance without digging into JSON files.
     st.markdown("### Ground-truth phases · مراحل البيانات الذهبية")
     ph_cols = st.columns(4)
     _phase_rows = [
@@ -3995,55 +4470,159 @@ def _render_governance() -> None:
     _total_entries = sum(r[2] for r in _phase_rows)
     st.caption(f"Combined: **{_total_entries:,}** bayts · {corpus_stats['total']:,} vector chunks · 25 manuscripts")
 
-    # ── CRAG verdict distribution ────────────────────────────────────────────
-    crag_dist = correctness.get("crag_verdict_distribution") or {}
-    if crag_dist:
-        st.markdown("### CRAG verdict distribution · توزيع تقييم الاسترجاع")
+    # ── Per-query results table ───────────────────────────────────────────────
+    # Why: the aggregate metrics above tell what happened; this table tells which
+    # queries drove those numbers — letting a reviewer spot patterns (e.g. all
+    # "Incorrect" CRAG verdicts are theme queries, not poet lookups).
+    scholar_results = eval_raw.get("scholar_results") or []
+    ooc_results     = eval_raw.get("ooc_results") or []
+    if scholar_results or ooc_results:
+        st.markdown("---")
+        st.markdown("### Per-query evaluation results · نتائج الاستعلامات التفصيلية")
         try:
             import pandas as _pd
-            df = _pd.DataFrame(
-                {"verdict": list(crag_dist.keys()), "count": list(crag_dist.values())}
-            ).set_index("verdict")
-            st.bar_chart(df, height=200)
+            if scholar_results:
+                with st.expander(f"▸ In-corpus scholar queries ({len(scholar_results)} total)", expanded=False):
+                    rows_sc = []
+                    for entry in scholar_results:
+                        fix = entry.get("fixture", {})
+                        rows_sc.append({
+                            "ID":           fix.get("id", ""),
+                            "Intent":       fix.get("intent", ""),
+                            "Query (AR)":   fix.get("query_ar", ""),
+                            "Query (EN)":   fix.get("query_en", ""),
+                            "CRAG verdict": entry.get("crag_verdict") or "—",
+                            "Refusal":      "✅ refused" if entry.get("is_refusal") else "answered",
+                            "Latency ms":   f"{entry.get('elapsed_ms', 0):.0f}",
+                            "Citations":    len(entry.get("citations_used") or []),
+                        })
+                    df_sc = _pd.DataFrame(rows_sc)
+                    st.dataframe(df_sc, use_container_width=True, hide_index=True)
+            if ooc_results:
+                with st.expander(f"▸ Out-of-corpus (OOC) queries ({len(ooc_results)} total)", expanded=False):
+                    rows_ooc = []
+                    for entry in ooc_results:
+                        fix = entry.get("fixture", {})
+                        rows_ooc.append({
+                            "ID":         fix.get("id", ""),
+                            "Query (AR)": fix.get("query_ar", ""),
+                            "Query (EN)": fix.get("query_en", ""),
+                            "Refused":    "✅ correct refusal" if entry.get("is_refusal") else "❌ missed refusal",
+                            "Latency ms": f"{entry.get('elapsed_ms', 0):.0f}",
+                        })
+                    df_ooc = _pd.DataFrame(rows_ooc)
+                    st.dataframe(df_ooc, use_container_width=True, hide_index=True)
         except ImportError:
-            for k, v in crag_dist.items():
-                st.markdown(f"- {k}: {v}")
+            st.caption("Install pandas to see the per-query table.")
 
-    # ── Robustness loop activation ───────────────────────────────────────────
-    robustness = eval_raw.get("robustness") or {}
-    if robustness.get("total_queries"):
-        st.markdown("### Robustness — failure-budget activation · تنشيط حدود الإخفاق")
-        b1, b2, b3 = st.columns(3)
-        b1.metric("CRAG re-query rate",
-                  f"{robustness.get('crag_requery_rate', 0)*100:.1f}%",
-                  f"{robustness.get('crag_requery_count', 0)} queries")
-        b2.metric("Self-RAG retry rate",
-                  f"{robustness.get('self_rag_retry_rate', 0)*100:.1f}%",
-                  f"{robustness.get('self_rag_retry_count', 0)} queries")
-        b3.metric("Fallback LLM rate",
-                  f"{robustness.get('fallback_llm_rate', 0)*100:.1f}%")
+    # ── Axis 5 — Extensions ───────────────────────────────────────────────────
+    extensions = eval_raw.get("extensions") or {}
+    if extensions:
+        st.markdown("---")
+        st.markdown("### Axis 5 — Extensions · EXT-1…EXT-9")
+        st.caption(
+            f"20-fixture extension set covering source routing, Khaleeji dialect bridge, "
+            f"fast-path, and genre filtering. "
+            f"{extensions.get('total_extension_queries', 0)} total queries."
+        )
 
-    # ── Per-stage timing waterfall ───────────────────────────────────────────
-    per_stage = eff.get("per_stage_avg_ms") or {}
-    if per_stage:
-        st.markdown("### Per-stage average latency · زمن كل مرحلة")
-        try:
-            import pandas as _pd
-            df = _pd.DataFrame(
-                {"stage": list(per_stage.keys()), "ms": list(per_stage.values())}
-            ).set_index("stage")
-            st.bar_chart(df, height=200)
-        except ImportError:
-            for k, v in per_stage.items():
-                st.markdown(f"- `{k}`: {v} ms")
+        x1, x2, x3, x4 = st.columns(4)
+        fp_rate   = extensions.get("fast_path_rate", 0)
+        dia_rate  = extensions.get("dialect_answer_rate", 0)
+        src_rate  = extensions.get("source_routing_rate", 0)
+        gen_rate  = extensions.get("genre_filter_rate", 0)
 
-    # ── Run mini-eval button ─────────────────────────────────────────────────
+        with x1:
+            _gov_metric_card(
+                "Fast-path rate (EXT-8)", "معدل المسار السريع",
+                f"{fp_rate*100:.1f}%", "≥ 90%",
+                "ok" if fp_rate >= 0.9 else ("warn" if fp_rate >= 0.5 else "fail"),
+                f"{extensions.get('fast_path_hits',0)}/{extensions.get('fast_path_total',0)} "
+                "counting queries routed to registry_lookup without LLM call."
+            )
+        with x2:
+            _gov_metric_card(
+                "Dialect answer rate (EXT-1)", "معدل إجابة اللهجة",
+                f"{dia_rate*100:.1f}%", "≥ 50%",
+                "ok" if dia_rate >= 0.5 else ("warn" if dia_rate >= 0.3 else "fail"),
+                f"{extensions.get('dialect_answered',0)}/{extensions.get('dialect_total',0)} "
+                "Khaleeji dialect queries answered after EXT-1 normalisation."
+            )
+        with x3:
+            src_note = (
+                f"{extensions.get('source_routing_hits',0)}/{extensions.get('source_routing_total',0)} "
+                "queries retrieved from expected source type."
+                if src_rate > 0 else
+                "Requires index rebuilt from data/unified_registry.json to include "
+                "oral_tradition + online_digitized chunks."
+            )
+            _gov_metric_card(
+                "Source routing (EXT-2/3/8)", "دقة توجيه المصدر",
+                f"{src_rate*100:.1f}%", "≥ 50%",
+                "ok" if src_rate >= 0.5 else ("warn" if src_rate >= 0.25 else "fail"),
+                src_note
+            )
+        with x4:
+            _gov_metric_card(
+                "Genre filter rate (M3)", "معدل فلترة النوع الأدبي",
+                f"{gen_rate*100:.1f}%", "≥ 50%",
+                "ok" if gen_rate >= 0.5 else ("warn" if gen_rate >= 0.3 else "fail"),
+                f"{extensions.get('genre_filter_hits',0)}/{extensions.get('genre_filter_total',0)} "
+                "genre queries answered (genre payload filter activated)."
+            )
+
+        # Per-extension-type results table
+        ext_results_list = eval_raw.get("extension_results") or []
+        if ext_results_list:
+            with st.expander(
+                f"▸ Extension query results ({len(ext_results_list)} total)", expanded=False
+            ):
+                try:
+                    import pandas as _pd
+                    rows_ext = []
+                    for entry in ext_results_list:
+                        fix = entry.get("fixture", {})
+                        rows_ext.append({
+                            "ID":           fix.get("id", ""),
+                            "Type":         entry.get("ext_type", fix.get("ext_type", "")),
+                            "Query (AR)":   fix.get("query_ar", ""),
+                            "Fast-path":    "✅" if entry.get("fast_path_hit") else "—",
+                            "Refusal":      "✅ refused" if entry.get("is_refusal") else "answered",
+                            "CRAG":         entry.get("crag_verdict") or "—",
+                            "Latency ms":   f"{entry.get('elapsed_ms', 0):.0f}",
+                        })
+                    df_ext = _pd.DataFrame(rows_ext)
+                    st.dataframe(df_ext, use_container_width=True, hide_index=True)
+                except ImportError:
+                    st.caption("Install pandas to see per-extension table.")
+    else:
+        st.markdown("---")
+        st.info(
+            "**Axis 5 — Extensions** not yet evaluated. "
+            "Click **▶ Run evaluation** below to run the 20-fixture extension set "
+            "covering EXT-1…EXT-9 (dialect, source routing, fast-path, genre filter).\n\n"
+            "> For source routing metrics, first rebuild the index from the unified registry:\n"
+            "> `python scripts/rebuild_index.py --registry data/unified_registry.json --force`"
+        )
+
+    # ── Full evaluation report ────────────────────────────────────────────────
+    report_path = _REPO_ROOT / "data" / "evaluation_report.md"
+    if report_path.exists():
+        st.markdown("---")
+        with st.expander("▸ Full evaluation report (data/evaluation_report.md)", expanded=False):
+            try:
+                st.markdown(report_path.read_text(encoding="utf-8"))
+            except Exception:
+                st.code(report_path.read_text(encoding="utf-8"))
+
+    # ── Run evaluation button ─────────────────────────────────────────────────
     st.markdown("---")
     st.markdown("### Re-evaluate · إعادة التقييم")
     cl, cr = st.columns([3, 1])
     with cl:
         st.caption(
-            "Click to run the full 50-fixture evaluation harness. Takes ~15 seconds in "
+            "Click to run the full 60-fixture evaluation harness "
+            "(20 scholar + 20 OOC + 20 bilingual). Takes ~20 seconds in "
             "stub mode, longer with a live LLM. Output overwrites "
             "`data/evaluation_raw.json` and `data/evaluation_report.md`."
         )
@@ -4058,11 +4637,47 @@ def _render_governance() -> None:
                     capture_output=True, text=True, env=env, timeout=600,
                 )
                 if proc.returncode == 0:
-                    st.success("Evaluation complete — reload the tab to see new numbers.")
+                    st.success("Evaluation complete — reload the tab to see updated numbers.")
+                    st.rerun()
                 else:
                     st.error(f"Evaluation failed (exit {proc.returncode}).")
                     with st.expander("stderr"):
-                        st.code(proc.stderr[-2000:])
+                        st.code(proc.stderr[-3000:])
+
+    # ── MCP server callout ───────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### 🔌 Also available as MCP tools · أدوات MCP")
+    st.markdown(
+        "NABAT-AI is exposed as a **Model Context Protocol** server — any MCP client "
+        "(Claude Desktop, Claude Code) can query the corpus directly without the Streamlit UI."
+    )
+    mcp_cols = st.columns(5)
+    _mcp_tools = [
+        ("🔍", "`search_nabati_poetry`", "Full RAG pipeline over 4,031 entries"),
+        ("📊", "`get_corpus_stats`",      "Deterministic corpus summary — no LLM"),
+        ("👤", "`get_poet_bio`",          "Poet bio lookup (local → Wikipedia fallback)"),
+        ("🧪", "`inspect_qdrant`",        "Raw vector-index inspection for debugging"),
+        ("🌐", "`enrich_poet`",           "Wikipedia/Brave enrichment for unknown poets"),
+    ]
+    for col, (icon, name, desc) in zip(mcp_cols, _mcp_tools):
+        col.markdown(
+            f"<div style='border:1px solid #E5DED1;border-top:3px solid #6B8159;"
+            f"border-radius:6px;padding:10px 12px;background:#FCFAF6'>"
+            f"<div style='font-size:18px'>{icon}</div>"
+            f"<div style='font-size:12px;font-family:monospace;color:#2A1F17;margin:4px 0'>{name}</div>"
+            f"<div style='font-size:11px;color:#7A766F'>{desc}</div>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+    with st.expander("▸ Register in Claude Code / Claude Desktop"):
+        st.code(
+            'PYTHONPATH=src python src/nabat_mcp_server.py',
+            language="bash",
+        )
+        st.caption(
+            "Add to `.claude/settings.json` → `mcpServers` block, or to "
+            "`~/Library/Application Support/Claude/claude_desktop_config.json` for Claude Desktop."
+        )
 
     # ── Honest framing footer ────────────────────────────────────────────────
     st.markdown("---")
@@ -4087,6 +4702,7 @@ def main() -> None:
         layout="wide",
         page_title="NABAT-AI — Khaleeji Poetry Scholar",
         page_icon="📜",
+        initial_sidebar_state="expanded",
     )
 
     # Preconnect + stylesheet link tags — non-blocking, so the browser starts
@@ -4116,6 +4732,15 @@ def main() -> None:
         st.session_state["current_view"] = "default"
     if "active_tab" not in st.session_state:
         st.session_state["active_tab"] = "workbench"
+    if "compose_mode" not in st.session_state:
+        st.session_state["compose_mode"] = False
+    if "compose_persona" not in st.session_state:
+        st.session_state["compose_persona"] = "scaffold"
+    if "last_compose_result" not in st.session_state:
+        st.session_state["last_compose_result"] = None
+
+    # ── Sidebar is always rendered — every page needs nav + back button ──────────
+    _render_sidebar()
 
     # ── Route: hero / browse / workbench ──────────────────────────────────────
     page = st.session_state["page"]
@@ -4126,13 +4751,11 @@ def main() -> None:
 
     # ── Browse corpus page ─────────────────────────────────────────────────────
     if page == "browse":
-        _render_sidebar()
         _render_browse_corpus()
         return
 
     # ── Workbench page (default) ───────────────────────────────────────────────
     _render_masthead_with_back()
-    _render_sidebar()
 
     # Tab selection is driven by the sidebar radio (key="active_tab")
     active_tab = st.session_state.get("active_tab", "workbench")

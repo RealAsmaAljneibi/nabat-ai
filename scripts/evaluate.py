@@ -7,11 +7,12 @@ runs all fixture sets through the orchestrator and writes data/evaluation_report
 The doctor grades against this report; every metric claim in the architecture doc
 (§7) must appear here, honest if below target rather than hidden.
 
-Four evaluation axes (§7):
+Five evaluation axes (§7 + post-submission extensions):
   Correctness  — CER buckets, Recall@5, CRAG κ, citation-resolvability, refusal precision
   Robustness   — loop activation rates, retry exhaustion, fallback-LLM invocations
   Efficiency   — p50/p95 latency, per-stage breakdown, token cost estimate
   Human        — 5-point Likert slot (filled offline by a Nabati scholar; we emit the scaffold)
+  Extensions   — EXT-1…EXT-9 coverage: source routing, dialect bridge, fast-path, genre filter
 
 Usage:
     cd handwritten-poems/
@@ -537,6 +538,101 @@ def _load_cer_summary() -> dict:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Axis 5 — Extensions
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def evaluate_extensions(
+    ext_results: list[tuple[dict, dict, float]],
+    chunks_meta_path: Path | None = None,
+) -> dict:
+    """
+    Axis 5 — measure EXT-1…EXT-9 capabilities against extension_queries.jsonl.
+
+    Metrics:
+      fast_path_rate     — % of fast_path=true fixtures where guardrail_flags
+                           contains "registry_lookup" (deterministic, no LLM)
+      dialect_answer_rate — % of dialect fixtures answered (not refused)
+      source_routing_rate — % of source-routing fixtures retrieving from expected
+                           source_type in the RRF top-5 (requires chunks_meta)
+      genre_filter_rate   — % of genre fixtures answered (genre filter activated)
+      extension_answer_rate — overall non-refusal rate for all extension queries
+    """
+    if not ext_results:
+        return {}
+
+    n = len(ext_results)
+
+    # ── Fast-path (EXT-8 registry_lookup branch) ──────────────────────────────
+    fp_fixtures = [(f, r, ms) for (f, r, ms) in ext_results if f.get("expected_fast_path")]
+    fp_hits = sum(
+        1 for (_, r, _) in fp_fixtures
+        if "registry_lookup" in (r.get("guardrail_flags") or [])
+    )
+    fast_path_rate = fp_hits / len(fp_fixtures) if fp_fixtures else 0.0
+
+    # ── Dialect normalization (EXT-1) ─────────────────────────────────────────
+    dialect_fixtures = [(f, r, ms) for (f, r, ms) in ext_results if f.get("ext_type") == "dialect"]
+    dialect_hits = sum(1 for (_, r, _) in dialect_fixtures if not r.get("is_refusal"))
+    dialect_answer_rate = dialect_hits / len(dialect_fixtures) if dialect_fixtures else 0.0
+
+    # ── Source routing accuracy (EXT-2, EXT-3, EXT-8) ────────────────────────
+    # For each fixture with expected_source, check if any rrf_top5 chunk is from
+    # that source_type using chunks_meta.json as a lookup table.
+    routing_fixtures = [(f, r, ms) for (f, r, ms) in ext_results if f.get("expected_source")]
+    routing_hits = 0
+    anchor_to_source: dict[str, str] = {}
+    if chunks_meta_path and chunks_meta_path.exists() and routing_fixtures:
+        try:
+            with open(chunks_meta_path, encoding="utf-8") as fh:
+                meta = json.load(fh)
+            for c in meta:
+                aid = c.get("anchor_id") or c.get("chunk_id") or ""
+                src = c.get("source_type") or ""
+                if aid:
+                    anchor_to_source[aid] = src
+        except Exception as exc:
+            logger.warning("Could not load chunks_meta for source routing: %s", exc)
+
+    for (fix, r, _) in routing_fixtures:
+        expected_src = fix.get("expected_source", "")
+        top5_ids = r.get("rrf_top5_anchor_ids") or []
+        # Accept: any top-5 chunk from the expected source, OR (for manuscript)
+        # any non-refusal when expected_source == "manuscript" (default corpus).
+        if expected_src == "manuscript":
+            if not r.get("is_refusal"):
+                routing_hits += 1
+        elif any(anchor_to_source.get(aid, "") == expected_src for aid in top5_ids):
+            routing_hits += 1
+    source_routing_rate = routing_hits / len(routing_fixtures) if routing_fixtures else 0.0
+
+    # ── Genre filter activation (M3 + EXT extensions) ────────────────────────
+    genre_fixtures = [(f, r, ms) for (f, r, ms) in ext_results if f.get("expected_genre")]
+    genre_hits = sum(1 for (_, r, _) in genre_fixtures if not r.get("is_refusal"))
+    genre_filter_rate = genre_hits / len(genre_fixtures) if genre_fixtures else 0.0
+
+    # ── Overall extension answer rate ─────────────────────────────────────────
+    answered = sum(1 for (_, r, _) in ext_results if not r.get("is_refusal"))
+    extension_answer_rate = answered / n
+
+    return {
+        "total_extension_queries": n,
+        "extension_answer_rate":   round(extension_answer_rate, 4),
+        "fast_path_rate":          round(fast_path_rate, 4),
+        "fast_path_hits":          fp_hits,
+        "fast_path_total":         len(fp_fixtures),
+        "dialect_answer_rate":     round(dialect_answer_rate, 4),
+        "dialect_answered":        dialect_hits,
+        "dialect_total":           len(dialect_fixtures),
+        "source_routing_rate":     round(source_routing_rate, 4),
+        "source_routing_hits":     routing_hits,
+        "source_routing_total":    len(routing_fixtures),
+        "genre_filter_rate":       round(genre_filter_rate, 4),
+        "genre_filter_hits":       genre_hits,
+        "genre_filter_total":      len(genre_fixtures),
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Report renderer
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -561,6 +657,8 @@ def render_report(
     n_scholar:   int,
     n_ooc:       int,
     n_bilingual: int,
+    extensions:  dict | None = None,
+    n_extension: int = 0,
 ) -> str:
     """Render the evaluation_report.md content as a string."""
 
@@ -621,12 +719,60 @@ def render_report(
     p50_ok  = e.get("p50_meets_target", False)
     p95_ok  = e.get("p95_meets_target", False)
 
+    # ── Axis 5 block ─────────────────────────────────────────────────────────
+    ext = extensions or {}
+    ext_block = ""
+    if ext:
+        fp_ok   = ext.get("fast_path_rate", 0) >= 0.9
+        dia_ok  = ext.get("dialect_answer_rate", 0) >= 0.5
+        src_ok  = ext.get("source_routing_rate", 0) >= 0.5
+        gen_ok  = ext.get("genre_filter_rate", 0) >= 0.5
+        ext_block = f"""
+## Axis 5 — Extensions · EXT-1…EXT-9
+
+**Fixture set:** {ext.get('total_extension_queries', 0)} queries
+(`tests/fixtures/extension_queries.jsonl`)
+
+| Metric | Result | Target | Status | n |
+|---|---|---|---|---|
+| Fast-path rate (EXT-8 registry_lookup) | {_pct(ext.get('fast_path_rate', 0))} | ≥ 90% | {_flag(fp_ok)} | {ext.get('fast_path_total', 0)} |
+| Dialect answer rate (EXT-1 bridge) | {_pct(ext.get('dialect_answer_rate', 0))} | ≥ 50% | {_flag(dia_ok)} | {ext.get('dialect_total', 0)} |
+| Source routing accuracy (EXT-2/3/8) | {_pct(ext.get('source_routing_rate', 0))} | ≥ 50% | {_flag(src_ok)} | {ext.get('source_routing_total', 0)} |
+| Genre filter answer rate (M3) | {_pct(ext.get('genre_filter_rate', 0))} | ≥ 50% | {_flag(gen_ok)} | {ext.get('genre_filter_total', 0)} |
+| Overall extension answer rate | {_pct(ext.get('extension_answer_rate', 0))} | — | — | {ext.get('total_extension_queries', 0)} |
+
+> **Fast-path rate:** registry_lookup queries (كم عدد, كم شاعراً…) must return
+> via the deterministic fast-path — `guardrail_flags` contains `"registry_lookup"` and
+> no LLM call is made. Target ≥ 90%.
+>
+> **Dialect answer rate:** queries using Khaleeji dialect terms (وش, شلون, يبون, الديرة…)
+> should resolve to answers after EXT-1 normalisation, not be refused. Target ≥ 50%.
+>
+> **Source routing accuracy:** queries targeting `online_digitized` or `oral_tradition`
+> sources should surface at least one chunk of the expected `source_type` in the
+> RRF top-5. Requires the index to be built from `data/unified_registry.json`.
+> If only the manuscript registry was indexed, source routing queries will score 0.
+>
+> **Genre filter answer rate:** queries naming an explicit genre (رثاء, فخر, مديح…)
+> should be answered (genre filter activated by self_query → Qdrant payload filter).
+
+---
+"""
+    else:
+        ext_block = """
+## Axis 5 — Extensions
+
+_Extension queries not run — run `PYTHONPATH=src python scripts/evaluate.py` to include._
+
+---
+"""
+
     return f"""# NABAT-AI — Evaluation Report
-## §7 Four-Axis Evaluation
+## §7 Five-Axis Evaluation
 
 **Generated:** {run_date}
 **LLM provider:** `{provider}`
-**Fixture counts:** {n_scholar} in-corpus · {n_ooc} OOC · {n_bilingual} bilingual
+**Fixture counts:** {n_scholar} in-corpus · {n_ooc} OOC · {n_bilingual} bilingual · {n_extension} extension
 
 ---
 
@@ -722,7 +868,7 @@ def render_report(
 |---|---|
 {human_agg_block}
 
----
+{ext_block}
 
 ## Summary: Architecture Claims vs Reality
 
@@ -730,15 +876,23 @@ def render_report(
 |---|---|---|
 | Citation-resolvability 100% (§2.9 guardrail a) | {_pct(c.get('citation_resolvability_rate', 0))} | {"✅ Met in stub mode — live test pending" if cit_ok else "⚠️ Below target — review guardrail_passed logic"} |
 | Recall@5 exact ≥ 75% (§5 scholar set) | {_pct(c.get('recall_at_5', 0))} | {"✅ Met" if rec_ok else f"⚠️ Below target — relaxed (manuscript-level) = {_pct(c.get('recall_at_5_relaxed',0))}"} |
+| Recall@5 relaxed ≥ 75% (correct manuscript) | {_pct(c.get('recall_at_5_relaxed', 0))} | {"✅ Met" if c.get('recall_at_5_relaxed', 0) >= 0.75 else "⚠️ Below target"} |
 | Refusal precision ≥ 90% (§2.9 guardrail c) | {_pct(c.get('refusal_precision_ooc', 0))} | {"✅ Met" if ref_ok else "⚠️ Below target — check OOC query routing"} |
 | p50 < 4 s (§7 efficiency) | {_ms(e.get('p50_ms', 0))} | {"✅ Met in stub" if p50_ok else "⚠️ Stub latency above 4 s — unexpected, check overhead"} |
 | p95 < 8 s (§7 efficiency) | {_ms(e.get('p95_ms', 0))} | {"✅ Met in stub" if p95_ok else "⚠️ Check p95 with live API"} |
+| Fast-path ≥ 90% (EXT-8 registry_lookup) | {_pct(ext.get('fast_path_rate', 0)) if ext else "—"} | {"✅ Met" if ext.get("fast_path_rate",0) >= 0.9 else "⚠️ Counting queries not routing to fast-path" if ext else "—"} |
+| Dialect bridge ≥ 50% (EXT-1) | {_pct(ext.get('dialect_answer_rate', 0)) if ext else "—"} | {"✅ Met" if ext.get("dialect_answer_rate",0) >= 0.5 else "⚠️ Dialect normalization may be failing" if ext else "—"} |
+| Source routing ≥ 50% (EXT-2/3/8) | {_pct(ext.get('source_routing_rate', 0)) if ext else "—"} | {"✅ Met" if ext.get("source_routing_rate",0) >= 0.5 else "⚠️ Rebuild index from unified_registry.json" if ext else "—"} |
 
 > **Note on stub mode:** the stub LLM returns deterministic canned responses that
 > always trigger the is_refusal path. This means citation-resolvability and
 > Recall@5 are measured on the guardrail-refusal template, not a real synthesis.
 > Run `LLM_PROVIDER=together LLM_API_KEY=<key> python scripts/evaluate.py` for
 > live numbers that reflect the actual pipeline quality.
+>
+> **Note on source routing (Axis 5):** source routing metrics require the Qdrant
+> index to include oral_tradition and online_digitized chunks. Rebuild with:
+> `python scripts/rebuild_index.py --registry data/unified_registry.json --force`
 
 ---
 
@@ -760,15 +914,17 @@ def main() -> None:
     print()
 
     # Load fixtures
-    scholar_fixtures  = _load_jsonl(FIXTURE_DIR / "scholar_queries.jsonl")
-    ooc_fixtures      = _load_jsonl(FIXTURE_DIR / "out_of_corpus_queries.jsonl")
+    scholar_fixtures   = _load_jsonl(FIXTURE_DIR / "scholar_queries.jsonl")
+    ooc_fixtures       = _load_jsonl(FIXTURE_DIR / "out_of_corpus_queries.jsonl")
     bilingual_fixtures = _load_jsonl(FIXTURE_DIR / "bilingual_queries.jsonl")
+    extension_fixtures = _load_jsonl(FIXTURE_DIR / "extension_queries.jsonl")
 
     print(f"Loaded fixtures: {len(scholar_fixtures)} scholar, "
-          f"{len(ooc_fixtures)} OOC, {len(bilingual_fixtures)} bilingual")
+          f"{len(ooc_fixtures)} OOC, {len(bilingual_fixtures)} bilingual, "
+          f"{len(extension_fixtures)} extension")
 
     # Run scholar set
-    print("\n[1/4] Running in-corpus scholar queries...")
+    print("\n[1/5] Running in-corpus scholar queries...")
     scholar_results: list[tuple[dict, dict, float]] = []
     for i, fix in enumerate(scholar_fixtures, 1):
         q = fix.get("query_ar", fix.get("query_en", ""))
@@ -778,7 +934,7 @@ def main() -> None:
         print(f"  [{i:02d}/{len(scholar_fixtures)}] {status}  {ms:6.0f} ms  {q[:50]}")
 
     # Run OOC set
-    print("\n[2/4] Running out-of-corpus queries (expecting refusals)...")
+    print("\n[2/5] Running out-of-corpus queries (expecting refusals)...")
     ooc_results: list[tuple[dict, dict, float]] = []
     for i, fix in enumerate(ooc_fixtures, 1):
         q = fix.get("query_ar", fix.get("query_en", ""))
@@ -789,7 +945,7 @@ def main() -> None:
         print(f"  [{i:02d}/{len(ooc_fixtures)}] {status}  {ms:6.0f} ms  {q[:50]}")
 
     # Run bilingual set (AR side only — HyDE parity tested in index smoke test)
-    print("\n[3/4] Running bilingual parity queries (AR side)...")
+    print("\n[3/5] Running bilingual parity queries (AR side)...")
     bilingual_results: list[tuple[dict, dict, float]] = []
     for i, fix in enumerate(bilingual_fixtures, 1):
         q = fix.get("query_ar", "")
@@ -798,19 +954,36 @@ def main() -> None:
         status = "REF" if result.get("is_refusal") else "OK "
         print(f"  [{i:02d}/{len(bilingual_fixtures)}] {status}  {ms:6.0f} ms  {q[:50]}")
 
-    # All results combined for robustness + efficiency
+    # Run extension set (EXT-1…EXT-9 coverage)
+    print("\n[4/5] Running extension queries (EXT-1…EXT-9)...")
+    extension_results: list[tuple[dict, dict, float]] = []
+    for i, fix in enumerate(extension_fixtures, 1):
+        q = fix.get("query_ar", fix.get("query_en", ""))
+        result, ms = _run_one(q, fix.get("query_en"))
+        extension_results.append((fix, result, ms))
+        ext_type = fix.get("ext_type", "?")
+        fp_hit   = "registry_lookup" in (result.get("guardrail_flags") or [])
+        status   = f"FP✓" if fp_hit else ("REF" if result.get("is_refusal") else "OK ")
+        print(f"  [{i:02d}/{len(extension_fixtures)}] {status} [{ext_type:14s}] {ms:6.0f} ms  {q[:45]}")
+
+    # All results combined for robustness + efficiency (excludes extension set
+    # so core §7 metrics stay comparable across runs)
     all_results = scholar_results + ooc_results + bilingual_results
 
     # Compute axes
-    print("\n[4/4] Computing metrics...")
+    print("\n[5/5] Computing metrics...")
     correctness = evaluate_correctness(scholar_results, ooc_results, scholar_fixtures)
     robustness  = evaluate_robustness(all_results)
     efficiency  = evaluate_efficiency(all_results)
     human       = build_human_judgment_scaffold(scholar_results)
     if os.getenv("LLM_PROVIDER", "stub") != "stub":
-        print("[4/4] Running LLM-proxy Axis 4 scoring…")
+        print("[5/5] Running LLM-proxy Axis 4 scoring…")
         human = run_llm_proxy_judgment(human)
-    cer         = _load_cer_summary()
+    cer        = _load_cer_summary()
+    extensions = evaluate_extensions(
+        extension_results,
+        chunks_meta_path=DATA_DIR / "qdrant" / "chunks_meta.json",
+    )
 
     # Render and write report
     report_md = render_report(
@@ -824,6 +997,8 @@ def main() -> None:
         n_scholar=len(scholar_fixtures),
         n_ooc=len(ooc_fixtures),
         n_bilingual=len(bilingual_fixtures),
+        extensions=extensions,
+        n_extension=len(extension_fixtures),
     )
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -838,6 +1013,7 @@ def main() -> None:
         "correctness": correctness,
         "robustness":  robustness,
         "efficiency":  efficiency,
+        "extensions":  extensions,
         "human_judgment": human,
         "cer_summary": cer,
         "scholar_results": [
@@ -858,6 +1034,21 @@ def main() -> None:
             {"fixture": f, "is_refusal": r.get("is_refusal"), "elapsed_ms": ms}
             for (f, r, ms) in ooc_results
         ],
+        "extension_results": [
+            {
+                "fixture":             f,
+                "ext_type":            f.get("ext_type"),
+                "is_refusal":          r.get("is_refusal"),
+                "elapsed_ms":          ms,
+                "fast_path_hit":       "registry_lookup" in (r.get("guardrail_flags") or []),
+                "guardrail_flags":     r.get("guardrail_flags") or [],
+                "crag_verdict":        r.get("crag_verdict"),
+                "rrf_top5_anchor_ids": [
+                    c.get("anchor_id", "") for c in (r.get("rrf_top5") or [])
+                ],
+            }
+            for (f, r, ms) in extension_results
+        ],
     }
     raw_path = DATA_DIR / "evaluation_raw.json"
     raw_path.write_text(json.dumps(raw, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -865,7 +1056,7 @@ def main() -> None:
 
     # Print quick summary
     print("\n── Quick summary ────────────────────────────────────────────────")
-    c, r_ax, e_ax = correctness, robustness, efficiency
+    c, r_ax, e_ax, ext = correctness, robustness, efficiency, extensions
     print(f"  Citation-resolvability:  {_pct(c.get('citation_resolvability_rate',0))}  (target 100%)")
     print(f"  Recall@5 exact:          {_pct(c.get('recall_at_5',0))}  (target ≥75%)")
     print(f"  Recall@5 relaxed (MS):   {_pct(c.get('recall_at_5_relaxed',0))}  (correct manuscript retrieved)")
@@ -875,7 +1066,14 @@ def main() -> None:
     print(f"  Reference hit rate:      {_pct(c.get('reference_hit_rate',0))}  ({ref_active}/{ref_total} queries — informational)")
     print(f"  p50 latency:             {_ms(e_ax.get('p50_ms',0))}  (target <4000 ms)")
     print(f"  p95 latency:             {_ms(e_ax.get('p95_ms',0))}  (target <8000 ms)")
-    print(f"  Total queries run:       {r_ax.get('total_queries',0)}")
+    print(f"  Total core queries run:  {r_ax.get('total_queries',0)}")
+    if ext:
+        print(f"  ── Axis 5 — Extensions ──────────────────────────────────────")
+        print(f"  Fast-path rate:          {_pct(ext.get('fast_path_rate',0))}  ({ext.get('fast_path_hits',0)}/{ext.get('fast_path_total',0)} — target ≥90%)")
+        print(f"  Dialect answer rate:     {_pct(ext.get('dialect_answer_rate',0))}  ({ext.get('dialect_answered',0)}/{ext.get('dialect_total',0)} — target ≥50%)")
+        print(f"  Source routing rate:     {_pct(ext.get('source_routing_rate',0))}  ({ext.get('source_routing_hits',0)}/{ext.get('source_routing_total',0)} — target ≥50%)")
+        print(f"  Genre filter rate:       {_pct(ext.get('genre_filter_rate',0))}  ({ext.get('genre_filter_hits',0)}/{ext.get('genre_filter_total',0)} — target ≥50%)")
+        print(f"  Extension answer rate:   {_pct(ext.get('extension_answer_rate',0))}  ({ext.get('total_extension_queries',0)} total)")
     print("────────────────────────────────────────────────────────────────")
 
 

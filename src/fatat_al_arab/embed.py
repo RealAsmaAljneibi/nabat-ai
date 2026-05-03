@@ -4,6 +4,9 @@ src/fatat_al_arab/embed.py
 Why this file exists: M3 Stage 1 — every RAG chunk needs a dense vector before
 it can be stored in Qdrant. This module owns the embedding contract so the rest
 of the pipeline imports a stable interface, not a model name.
+When triggered: At first call to dense retrieval, prototype router, or index.py
+build (lazy-loaded singleton).
+Purpose: Loads AraBERT 768-dim sentence-transformer + Arabic normaliser; deterministic hash fallback for offline/CI
 
 Two embeddings are produced per text:
   1. Dense: AraPoemBERT (locally fine-tuned on Khaleeji Nabati poetry) via
@@ -76,15 +79,48 @@ def _load_model() -> None:
 
 _ALEF_VARIANTS  = re.compile(r"[آأإٱ]")
 _TATWEEL        = re.compile(r"ـ")
-_HARAKAT        = re.compile(r"[\u064B-\u065F\u0670]")
+
+# Comprehensive tashkeel pattern covering three Unicode bands:
+#   U+0610–U+061A  Arabic combining marks (sign Sallallahou, etc.)
+#   U+064B–U+065F  Standard harakat: fathatan, dammatan, kasratan, fatha, damma,
+#                  kasra, shadda, sukun, maddah, hamza above/below, subscript alef
+#   U+0670         Superscript alef (used with alef wasla)
+#   U+06D6–U+06DC  Quranic small high marks (sajdah, rub el hizb, etc.)
+#   U+06DF–U+06E4  Arabic small low/high marks
+#   U+06E7–U+06E8  Small high ya / small high noon
+#   U+06EA–U+06ED  Arabic poetic verse signs — appear in scanned manuscript OCR
+# Why all three bands: manuscript scans from different eras use different encoding
+# conventions; stripping only the base harakat band leaves poetic verse signs in
+# the text, causing BM25 token mismatches between tashkeel-on and tashkeel-off copies.
+_TASHKEEL = re.compile(
+    r"[\u0610-\u061A"
+    r"\u064B-\u065F"
+    r"\u0670"
+    r"\u06D6-\u06DC"
+    r"\u06DF-\u06E4"
+    r"\u06E7-\u06E8"
+    r"\u06EA-\u06ED]"
+)
+
 _NON_ARABIC_SEP = re.compile(r"[^\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\s]")
+
+
+def strip_tashkeel(text: str) -> str:
+    """
+    Remove all Arabic diacritical marks (tashkeel) from *text*.
+    Covers standard harakat, shadda, sukun, and the extended Quranic/poetic
+    mark bands that appear in scanned manuscript OCR output.
+    Called by normalise_arabic (step 5) and usable standalone when only
+    tashkeel removal is needed without full normalisation.
+    """
+    return _TASHKEEL.sub("", text)
 
 
 def normalise_arabic(text: str) -> str:
     """
     Light normalisation before embedding/BM25 tokenisation.
     Why this (not camel-tools): portability. camel-tools is heavy; this covers
-    the critical equivalences for Nabati Khaleeji (alef variants, harakat, ة→ه
+    the critical equivalences for Nabati Khaleeji (alef variants, tashkeel, ة→ه
     for dialectal variants, tatweel stripping, ى→ي for cache-key stability).
 
     Normalisation steps (order matters):
@@ -92,7 +128,7 @@ def normalise_arabic(text: str) -> str:
       2. ة (ta-marbuta) → ه  — dialectal equivalence
       3. ى (alef-maksura) → ي — prevents cache miss on "مكي" vs "مكى"
       4. Strip tatweel (ـ)
-      5. Strip all harakat (U+064B–U+065F, U+0670)
+      5. Strip tashkeel — all three Unicode bands (standard + Quranic + poetic verse signs)
       6. Replace non-Arabic punctuation with space
     """
     if not text:
@@ -101,7 +137,7 @@ def normalise_arabic(text: str) -> str:
     text = text.replace("ة", "ه")
     text = text.replace("ى", "ي")   # unify ya / alef-maksura for cache-key stability
     text = _TATWEEL.sub("", text)
-    text = _HARAKAT.sub("", text)
+    text = strip_tashkeel(text)
     text = _NON_ARABIC_SEP.sub(" ", text)
     return " ".join(text.split())
 

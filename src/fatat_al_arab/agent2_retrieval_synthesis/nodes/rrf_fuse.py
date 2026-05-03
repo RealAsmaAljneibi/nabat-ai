@@ -4,6 +4,7 @@ agent2_retrieval_synthesis/nodes/rrf_fuse.py
 Why this node exists: §2.5 Stage 5 — merges the three independent ranked lists
 from Stage 4 into one definitive top-N ranking via Reciprocal Rank Fusion.
 
+When triggered: Stage 5 — merges the three independent ranked lists from Stage 4 into one definitive top-N ranking via Reciprocal Rank Fusion.
 Two things happen here that don't happen in rrf.fuse() itself:
 
   1. Soft filters (score boost) — Stage 3 self_query may extract low-confidence
@@ -38,6 +39,14 @@ logger = logging.getLogger(__name__)
 RRF_K         = 60      # RRF damping constant (Cormack et al. 2009)
 TOP_N_FUSED   = 20      # top results to carry forward to Stage 6
 SOFT_BOOST    = 1.5     # multiplicative score boost when soft filter matches
+
+# Why this boost exists: poem/group/manuscript-level chunks have more text than
+# verse chunks, so they accumulate higher BM25 + dense scores and win RRF fusion
+# even when the exact gold verse is present. This causes Recall@5 exact to fail
+# (the right manuscript is found — relaxed recall ≥75% — but the wrong page wins).
+# Boosting verse-level chunks post-fusion ensures the most citable, page-exact
+# unit ranks above its parent poem/group chunk for the same manuscript.
+VERSE_LEVEL_BOOST = 1.25   # verse chunks get 25% RRF score uplift before dedup
 
 # Source-tier weights applied after fusion.
 # Why: reference corpus (scholarly PDFs) and MAAI7103 oral bayts score highly
@@ -174,6 +183,44 @@ def _apply_source_weights(chunks: list[ScoredChunk]) -> list[ScoredChunk]:
     return sorted(weighted, key=lambda c: (-c.rrf_score, c.chunk_id))
 
 
+def _apply_level_preference(chunks: list[ScoredChunk]) -> list[ScoredChunk]:
+    """
+    Boost verse-level chunks so they outrank poem/group/manuscript chunks
+    that share the same manuscript and vocabulary. Without this, higher-level
+    chunks (more text → more BM25 hits) win RRF fusion and push the exact verse
+    below the top-20 cut, killing Recall@5 exact even when relaxed recall is fine.
+    """
+    boosted = []
+    for c in chunks:
+        multiplier = VERSE_LEVEL_BOOST if c.level == "verse" else 1.0
+        if multiplier == 1.0:
+            boosted.append(c)
+        else:
+            boosted.append(ScoredChunk(
+                chunk_id=c.chunk_id,
+                rrf_score=c.rrf_score * multiplier,
+                text=c.text,
+                level=c.level,
+                anchor_id=c.anchor_id,
+                poet_name=c.poet_name,
+                source_volume=c.source_volume,
+                source_page=c.source_page,
+                source_image_path=c.source_image_path,
+                manuscript_short_key=c.manuscript_short_key,
+                genre=c.genre,
+                genre_confidence=c.genre_confidence,
+                genre_source=c.genre_source,
+                emotions=list(c.emotions),
+                source_type=c.source_type,
+                data_tier=c.data_tier,
+                is_secondary_source=c.is_secondary_source,
+                parent_poem_id=c.parent_poem_id,
+                poem_matla=c.poem_matla,
+                extra=c.extra,
+            ))
+    return sorted(boosted, key=lambda c: (-c.rrf_score, c.chunk_id))
+
+
 def _dedup_by_anchor(
     chunks: list[ScoredChunk],
     keep_all_levels: bool = False,
@@ -234,6 +281,10 @@ def rrf_fuse_node(state: AgentState) -> AgentState:
     # Source-tier downweighting: reference PDFs and secondary oral/online sources
     # must not outrank primary manuscript verse content
     fused = _apply_source_weights(fused)
+
+    # Verse-level preference: boosts exact verse chunks above their parent
+    # poem/group chunks so Recall@5 exact is not lost to higher-level aggregates
+    fused = _apply_level_preference(fused)
 
     # De-duplicate across chunk levels (keep all for interpretive queries)
     keep_all = (detected_intent == "interpretive")

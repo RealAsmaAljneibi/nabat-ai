@@ -7,6 +7,7 @@ archival accession numbers) and adhesive labels (barcode stickers, sale labels).
 These are Challenge 7 in the architecture doc. Kraken treats stamp ink as text
 and generates spurious text lines from them. The function here detects candidate
 intrusion regions and returns mask polygons for the annotator to confirm.
+Where it's called: tests. Purpose: Masks stamps and labels so HTR doesn't transcribe them as verse
 
 Algorithm:
   Stamps: Circular Hough transform on a Canny-edge binary. Circles with radius

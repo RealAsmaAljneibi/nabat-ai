@@ -12,7 +12,9 @@ retrieval decision is made, we need three things the rest of the pipeline depend
 
 This node populates: query_lang, query_ar, query_en, detected_intent,
 detected_dialect, intent_confidence — all §2.4 Step 1 output fields.
-
+When triggered: Stage 1 — first 
+LLM-bearing Agent-1 node when track = poetic_rag.
+Purpose: Language detection + intent confidence + Khaleeji dialect ID; routes to clarification if confidence < 0.5.
 Architecture refs: §2.4 Stage 1 (Bilingual Query Analysis), §2.6 (state contract),
 §5 (intent_confidence < 0.5 → clarification path rather than retrieval).
 """

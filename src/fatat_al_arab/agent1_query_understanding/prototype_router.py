@@ -16,6 +16,8 @@ same one used by ChatGPT's classifier-as-a-service tools and by the OpenAI
 guardrails router: embed a small set of *prototype* questions per intent
 once, then at query time embed the user's question and pick the closest
 prototype if the cosine similarity clears a threshold.
+When triggered: Lazy-imported from intent_router.py — fires on every query whose Tier-1 regex misses.
+Purpose: Tier 2 — 123 prototype questions × 9 intents, AraBERT/TF-IDF cosine with dual gate (threshold + margin); zero LLM
 
 Encoder chain (graceful fallback so this ships today):
     1. AraPoemBERT / AraBERTv2 via sentence-transformers (if installed).

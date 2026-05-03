@@ -6,7 +6,8 @@ user can filter "show me the love poems" or "show me poems about grief"
 without relying on dense similarity alone. Dense similarity is good at
 finding related verses, but bad at filtering by category — a love poem and a
 war poem about the same oasis embed close together. Hard filters on a genre
-field solve this cleanly.
+field solve this cleanly. Where it's called: app (live — checks neural availability), 
+offline enrich script. Purpose: Silver-baseline genre classifier (43% coverage); app checks if neural upgrade is available
 
 Classification strategy — neural-first with heuristic fallback:
   1. PRIMARY: Fine-tuned AraPoemBERT classifiers (arapoem_genre_best.pt,

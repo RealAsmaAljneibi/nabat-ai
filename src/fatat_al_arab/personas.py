@@ -1,16 +1,24 @@
 """
 fatat_al_arab/personas.py
 =========================
-Why this file exists: every LLM node in the pipeline was using a different
-"You are a specialist…" opener, so the two named agents had no consistent
-identity in the model's context. This module defines the canonical persona
-header for each agent so that (a) the LLM always knows who it is and what
-its role is, and (b) any node that needs a persona just imports the constant
-rather than re-inventing the wording.
+Why this file exists: every LLM node in the RAG pipeline was using a different
+"You are a specialist…" opener, so the named agents had no consistent identity
+in the model's context. This module defines the canonical persona header for
+each agent so that (a) the LLM always knows who it is and what its role is, and
+(b) any node that needs a persona just imports the constant rather than
+re-inventing the wording.
 
-Two agents, two personas:
-  AL_NASSIKH    — الناسخ  — Worker 1: the meticulous manuscript archivist
-  FATAT_AL_ARAB — فتاة العرب — Workers 2+3: the bilingual poetry scholar
+When triggered: At import time of every node that prepends a persona
+(bilingual_analyzer, crag_grader, synthesise, reflect).
+
+Purpose: Holds the 2 persona prompt strings owned by Workers 1-3
+(NASSIKH_PERSONA, FATAT_PERSONA). The 4 creative-agent personas
+(MULHIM / MUSHARIK / HAFIZ / MUQAYYIM) live with their owning worker at
+`src/creative_poet/personas.py` so each worker boundary is self-contained.
+
+Two agents owned by Workers 1-3:
+  AL_NASSIKH    — الناسخ    — Worker 1: the meticulous manuscript archivist
+  FATAT_AL_ARAB — فتاة العرب — Workers 2+3: the bilingual poetry scholar (RAG)
 """
 
 # ── Al-Nassikh · الناسخ ───────────────────────────────────────────────────────
@@ -41,3 +49,8 @@ from the source texts, respect Khaleeji dialectal register, and always cite by \
 manuscript name and folio. You never fabricate a verse, a poet, or a manuscript \
 reference. Your specific task in this call is described below.
 """
+
+# NOTE: The four creative-agent personas (Al-Mulhim, Al-Musharik, Al-Hafiz,
+# Al-Muqayyim) used to live here too. They were moved to
+# `src/creative_poet/personas.py` in May 2026 so each worker owns its own
+# persona constants. If you're looking for those, that's where they are now.

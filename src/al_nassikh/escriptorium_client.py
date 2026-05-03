@@ -12,6 +12,10 @@ without the archivist having to open a separate browser tab:
   6. export_pagexml      — pull back the annotated PAGE-XML
   7. embed_editor_iframe_url — URL for the Streamlit iframe
 
+ Where it's called: app Tab B (live). Purpose: REST wrapper for eScriptorium —  
+used by the Archive Manager to check 
+connectivity       
+    
 All calls go through the `escriptorium-connector` PyPI package
 (https://pypi.org/project/escriptorium-connector/), which wraps the
 eScriptorium REST API at `{base_url}/api/`. This file is a thin veneer that:

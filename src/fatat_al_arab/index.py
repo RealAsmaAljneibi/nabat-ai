@@ -5,6 +5,10 @@ Why this file exists: M3 Stage 2 — anchor_registry_phase4.json holds 1,502
 poetry entries. This module explodes each entry into chunk levels,
 encodes them with AraBERT, and stores everything in a file-backed Qdrant
 collection so any laptop can do approximate nearest-neighbour search.
+  When triggered: Offline at scripts/rebuild_index.py; at runtime the FIRST query loads the cached IndexBundle.
+  Purpose: Builds + loads file-backed
+  Qdrant: 8,415 chunks across 9 granularity levels
+(verse → group → poem → manuscript → poet → era → genre → emotion → reference). 
 
 Stanza-aware chunking (§2.4.1 of the architecture doc):
   Level 1 — verse (بيت):       each entry = one matla (opening verse).
@@ -69,13 +73,16 @@ from fatat_al_arab.retrievers.colbert import ColBERTRetriever
 _HERE = Path(__file__).resolve().parent
 _REPO_ROOT = _HERE.parent.parent          # …/handwritten-poems
 # Registry preference order (most complete → least complete):
-#   1. anchor_registry_full_enriched.json  — Phase 1-4 combined, genre-tagged (2,222 entries)
-#   2. anchor_registry_full.json           — Phase 1-4 combined, not yet genre-tagged
-#   3. anchor_registry_phase4_enriched.json — Phase 4 only, genre-tagged (1,502 entries)
-#   4. anchor_registry_phase4.json         — Phase 4 only, no genre tags
-# Why this order: ingest_phases_123.py + enrich_genre_heuristic.py produce (1).
-# Falling back ensures old setups and CI still work without re-running the pipeline.
+#   1. unified_registry.json               — all source types (manuscript + oral + online), 4031 entries
+#   2. anchor_registry_full_enriched.json  — Phase 1-4 combined, genre-tagged (manuscript only)
+#   3. anchor_registry_full.json           — Phase 1-4 combined, no genre tags
+#   4. anchor_registry_phase4_enriched.json — Phase 4 only, genre-tagged (1,502 entries)
+#   5. anchor_registry_phase4.json         — Phase 4 only, no genre tags
+# Why unified_registry first: it includes oral_tradition (106) and online_digitized (1750)
+# alongside the 2175 manuscript entries. Fallbacks keep old setups and CI working.
 _GT = _REPO_ROOT / "data" / "ground_truth"
+_DATA_DIR          = _REPO_ROOT / "data"
+_UNIFIED_REGISTRY  = _DATA_DIR / "unified_registry.json"
 _FULL_ENRICHED    = _GT / "anchor_registry_full_enriched.json"
 _FULL_PLAIN       = _GT / "anchor_registry_full.json"
 _ENRICHED_REGISTRY = _GT / "anchor_registry_phase4_enriched.json"
@@ -86,6 +93,7 @@ _MS_REGISTRY_PATH  = _GT / "manuscript_registry.json"
 # is built from the manuscript registry alone (graceful degradation).
 _REFERENCE_CORPUS  = _GT / "reference_corpus.json"
 DEFAULT_REGISTRY = (
+    _UNIFIED_REGISTRY  if _UNIFIED_REGISTRY.exists()  else
     _FULL_ENRICHED    if _FULL_ENRICHED.exists()    else
     _FULL_PLAIN       if _FULL_PLAIN.exists()       else
     _ENRICHED_REGISTRY if _ENRICHED_REGISTRY.exists() else

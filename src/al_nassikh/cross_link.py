@@ -8,6 +8,9 @@ and matla lines but were built from different sources. This script joins them
 so Agent 2 can navigate from a verse chunk all the way to the TOC entry that
 gives the poet's full name, page citation, and source volume.
 
+Where it's called: tests/test_crosslink.py, Purpose: One-time fuzzy join between Phase
+1-3 verse data and Phase 4 TOC — tested
+
 Algorithm (§M1 spec):
   1. Normalise (poet, matla) keys from both sides — strip harakat, unify alef
      variants, lowercase, strip punctuation.

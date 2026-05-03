@@ -7,6 +7,7 @@ into eScriptorium's ontology API (via escriptorium_client.set_ontology) so they
 appear in the annotation UI as named options rather than generic "TextRegion".
 The function here analyses a page image and proposes zone assignments as
 geometric regions — the annotator confirms or adjusts in eScriptorium's editor.
+Where it's called: tests. Purpose: Labels layout regions (two-column poetry, margin notes, prose)
 
 Five zone types (from §2.3 Stage 5):
   TWO_COLUMN_POETRY    — the main text body (sadr + ajuz side-by-side)

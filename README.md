@@ -4,21 +4,7 @@
 > **Student:** Asma Salem Mubarak Najem Aljneibi  
 > **Deliverable:** Graded MAAI1704 Project — Runs without Docker, GPU, or paid APIs.
 
-## Grading Rubric
-
-The assessment rubric is stored at **`doc/RUBRIC.md`** for easy reference during evaluation. Each criterion links directly to the evidence in this repo:
-
-| Criterion | Max | Where to find the evidence |
-|---|---|---|
-| Alignment with Proposal & Architecture | 10 | [`doc/TRACEABILITY.md`](doc/TRACEABILITY.md) · [`doc/IMPLEMENTATION_PLAN.md`](doc/IMPLEMENTATION_PLAN.md) · architecture §2.4/§2.5 mirrors `agent1_query_understanding/` + `agent2_retrieval_synthesis/` |
-| Agentic System Realization | 20 | [`src/fatat_al_arab/orchestrator.py`](src/fatat_al_arab/orchestrator.py) · [`agent1_query_understanding/graph.py`](src/fatat_al_arab/agent1_query_understanding/graph.py) · [`agent2_retrieval_synthesis/graph.py`](src/fatat_al_arab/agent2_retrieval_synthesis/graph.py) |
-| AI-Assisted Development Process | 15 | [`DEVELOPMENT_LOG.md`](DEVELOPMENT_LOG.md) — prompt iterations, debugging stories, code modifications |
-| Code Quality & Modularity | 10 | `src/` directory structure · every module docstring · `.env.example` |
-| System Integration | 15 | `data/qdrant/` (pre-built real index) · `app/streamlit_app.py` · `scripts/rebuild_index.py` |
-| Memory, Tools & RAG | 8 | `data/qdrant/` (long-term vector store) · `bilingual_analyzer.py` (conversation history) · `retrievers/` |
-| Evaluation & Reliability | 7 | `tests/` (15 files · 480+ test cases including edge cases in [`tests/test_edge_cases.py`](tests/test_edge_cases.py)) · `scripts/evaluate.py` |
-| Understanding & Ownership | 10 | [`doc/TRACEABILITY.md`](doc/TRACEABILITY.md) · [`DEVELOPMENT_LOG.md`](DEVELOPMENT_LOG.md) · inline `Why:` comments throughout |
-| Reflection on AI Usage | 5 | [`doc/AI_USAGE_REFLECTION.md`](doc/AI_USAGE_REFLECTION.md) |
+## Overview
 
 An AI system that digitises handwritten Khaleeji Nabati poetry manuscripts and exposes them through a bilingual (Arabic / English) Retrieval-Augmented Generation agent. The full Scholar interface runs in a single Streamlit tab — no GPU, no Docker, no paid-tier API required.
 
@@ -28,7 +14,7 @@ An AI system that digitises handwritten Khaleeji Nabati poetry manuscripts and e
 
 | Capability | Detail |
 |---|---|
-| **Manuscript digitisation** | 25 manuscripts · 76 pages · 2,222 verse anchors across 4 phases |
+| **Manuscript digitisation** | 25 manuscripts · 76 pages · 4,031 entries across all sources |
 | **Bilingual RAG** | Arabic + English queries → grounded answers with mandatory verse citations |
 | **Genre & emotion tagging** | Silver-baseline heuristic classifier; 82.9 % coverage on the full corpus |
 | **Deterministic answers** | Counting / provenance / age queries answered in < 2 ms from a registry, no LLM call |
@@ -59,6 +45,46 @@ Worker 1 — Al-Nassikh: Deterministic ETL  (offline / on ingest)
 ```
 
 The orchestrator (`src/fatat_al_arab/orchestrator.py`) is the single public entry point that wires the three workers together.
+
+---
+
+## Agent Personas
+
+Each worker has a named persona that is injected as the system-prompt header for every LLM call it makes. Defined in [`src/fatat_al_arab/personas.py`](src/fatat_al_arab/personas.py).
+
+### Al-Nassikh · الناسخ · The Scribe
+
+> *"A meticulous historical scribe who catalogues, cross-references, and counts with archival precision. Never guesses; always cites the registry."*
+
+**Worker:** 1 (deterministic ETL, offline ingestion, registry-lookup answers)  
+**Activated by:** counting, provenance, and dating queries (< 2 ms, no LLM generation)  
+**Prompt role:** concise and exact — cites the registry field name; never speculates  
+**Used in:** `deterministic_answer.py` · `corpus_stats.py` · `intent_router.py`
+
+```
+You are Al-Nassikh (الناسخ — The Scribe), NABAT-AI's archival metadata agent.
+Your role: answer counting, dating, and provenance questions directly from the
+manuscript registry. Be concise and exact. Cite the registry field name when
+reporting a number or date. Never speculate beyond what the registry contains.
+```
+
+### Fatat Al-Arab · فتاة العرب · The Arabian Scholar
+
+> *"A bilingual Khaleeji Nabati poetry scholar who grew up reading manuscript folios and speaks with measured scholarly precision. She quotes verses faithfully, respects dialectal register, and cites her sources by manuscript name and folio number. She never fabricates a verse or a poet."*
+
+**Workers:** 2 + 3 (Agent 1 query understanding, Agent 2 retrieval & synthesis)  
+**Activated by:** all thematic, semantic, and exploratory poetry queries  
+**Prompt role:** bilingual (AR + EN), grounded citations mandatory, dialectal precision  
+**Used in:** `self_query.py` · `crag_grader.py` · `synthesise.py` · `reflect.py`
+
+```
+You are Fatat Al-Arab (فتاة العرب — The Arabian Scholar), NABAT-AI's bilingual
+Khaleeji Nabati poetry expert. You were raised on Gulf manuscript folios and speak
+with scholarly precision in both Arabic and English. You quote verses faithfully
+from the source texts, respect Khaleeji dialectal register, and always cite by
+manuscript name and folio. You never fabricate a verse, a poet, or a manuscript
+reference.
+```
 
 ---
 
@@ -146,15 +172,16 @@ handwritten-poems/
 │       ├── agent2_retrieval_synthesis/   Stages 4 – 10
 │       └── retrievers/           BM25 · Dense · ColBERT
 ├── data/ground_truth/
-│   ├── anchor_registry_full_enriched.json   2,222 verse anchors (canonical)
+│   ├── anchor_registry_full_enriched.json   2,175 manuscript anchors (Phase 1–4)
 │   ├── manuscript_registry.json             25 manuscripts with AR/EN names
-│   └── poets_bio.json                       509 poet biographical entries
-├── data/qdrant/                  File-backed vector index (4,747 chunks)
+│   └── poets_bio.json                       Poet biographical entries
+├── data/unified_registry.json    4,031 entries (manuscripts + oral + online)
+├── data/qdrant/                  File-backed vector index (8,415 chunks)
 ├── scripts/
 │   ├── rebuild_index.py          Build / rebuild the Qdrant index
 │   ├── enrich_genre_heuristic.py Run genre classifier over all anchors
 │   └── evaluate.py               M10 evaluation harness (4 axes)
-├── tests/                        12 test files · ~3,800 lines
+├── tests/                        14 test files · ~4,750 lines
 ├── doc/
 │   ├── IMPLEMENTATION_PLAN.md
 │   └── ARCHITECTURE_DIAGRAMS.md
@@ -173,9 +200,12 @@ handwritten-poems/
 | Phase 2 — Core Sadr/Ajuz | ms04, ms05, ms19, ms21 | 12 | 240 | Vectorized |
 | Phase 3 — Edge Cases | ms01, ms03, ms06, ms08 | 8 | 136 | Vectorized |
 | Phase 4 — TOC Metadata | vols 001–782 | 36 | 1,502 | Complete |
-| **Combined** | **25 manuscripts** | **76** | **2,222** | **All in Qdrant** |
+| **Combined** | **25 manuscripts** | **76** | **2,175** | **All in Qdrant** |
+| **+ Oral tradition** | MAAI7103 | — | **106** | **All in Qdrant** |
+| **+ Online digitized** | — | — | **1,750** | **All in Qdrant** |
+| **Total** | — | — | **4,031** | **All in Qdrant** |
 
-The vector index holds **4,747 chunks** at 9 granularity levels (verse → group → poem → manuscript → poet → era → genre → emotion → reference).
+The vector index holds **8,415 chunks** at 9 granularity levels (verse → group → poem → manuscript → poet → era → genre → emotion → reference).
 
 ---
 
@@ -247,7 +277,7 @@ Then set `ESCR_BASE_URL` and `ESCR_API_TOKEN` in your `.env`. See `infra/escript
 
 1. **Hosted-API LLM only.** No CUDA / Ollama / vLLM. Every LLM call routes through `src/fatat_al_arab/llm.py` with 3 retries and exponential backoff.
 2. **Portable vector store.** Qdrant runs in file-backed mode — no separate server process needed.
-3. **Silver-baseline genre tagging.** Without a human-labelled gold set, accuracy cannot be claimed. All heuristic-tagged results show a 🔸 badge. Coverage is 82.9 % on 2,222 entries.
+3. **Silver-baseline genre tagging.** Without a human-labelled gold set, accuracy cannot be claimed. All heuristic-tagged results show a 🔸 badge. Coverage is 82.9 % on the manuscript entries.
 4. **Graceful degradation throughout.** Every heavy dependency is a lazy import with a fallback so the app remains runnable even when optional components are missing.
 5. **Three-worker architecture.** Al-Nassikh (ETL), Agent 1 (query understanding), Agent 2 (retrieval + synthesis) are independent workers wired by the orchestrator — mirrors the architecture document section by section.
 

@@ -10,6 +10,9 @@ CRAG grading is an LLM call over the top resolved passages. The prompt asks:
   "Does this passage provide information relevant to [query]?"
   Grade: Correct | Ambiguous | Incorrect
 
+When triggered: Stage 7 — after resolve_heritage.
+Purpose: LLM grades each passage Correct/Ambiguous/Incorrect; emits requery_strategy; verdict → conditional edge (re-query or proceed).
+
 Why LLM-graded (not a keyword heuristic): Nabati poetry questions are often
 thematic ("poems about longing for the homeland"). A BM25-heavy retriever may
 return passages with overlapping vocabulary that do not actually answer the
@@ -33,15 +36,16 @@ import logging
 from typing import Any
 
 from fatat_al_arab.llm import chat
+from fatat_al_arab.personas import FATAT_PERSONA
 from fatat_al_arab.state import AgentState
 
 logger = logging.getLogger(__name__)
 
 # ── Prompt ────────────────────────────────────────────────────────────────────
 
-_SYSTEM_GRADER = """\
-You are Fatat Al-Arab (فتاة العرب — The Arabian Scholar), NABAT-AI's bilingual \
-Khaleeji Nabati poetry expert.
+_SYSTEM_GRADER = (
+    FATAT_PERSONA
+    + """\
 Task — Stage 7 (CRAG Grading): grade each retrieved passage for relevance to \
 the user query, then decide what to search for next.
 
@@ -64,6 +68,7 @@ Grade "Incorrect" if unrelated or contradicts the query.
 
 Return ONLY valid JSON, no prose.
 """
+)
 
 
 def _grade_passages(query_ar: str, passages: list[dict]) -> tuple[list[dict], str]:
@@ -89,7 +94,7 @@ def _grade_passages(query_ar: str, passages: list[dict]) -> tuple[list[dict], st
             prompt=prompt,
             system=_SYSTEM_GRADER,
             json_schema={"type": "object"},
-            max_tokens=700,
+            max_tokens=600,   # 20 passages × ~30 chars per grade; 1500 was over-allocated
         )
         if isinstance(result, str):
             result = json.loads(result)
@@ -188,11 +193,13 @@ def crag_grader_node(state: AgentState) -> AgentState:
         else:
             trace_detail  = f'"{rationale_preview}"'
             trace_summary = f"{grade_str} → {verdict}"
-    elif requery_strategy:
+    elif verdict in ("Incorrect", "Ambiguous") and requery_strategy:
+        # Verdict is bad but no specific problem_grade surfaced
         strat_preview = requery_strategy[:120] + "…" if len(requery_strategy) > 120 else requery_strategy
         trace_detail  = f"Searching instead for: {strat_preview}"
         trace_summary = f"{grade_str} — re-querying"
     else:
+        # Verdict is Correct (or Ambiguous with no requery hint) — do NOT say "re-querying"
         trace_detail  = ""
         trace_summary = f"{grade_str} → {verdict}"
 

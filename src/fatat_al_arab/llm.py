@@ -5,6 +5,8 @@ Why this file exists: every LLM call in the system funnels through this single
 adapter so the doctor can run the whole stack by setting two env vars (LLM_PROVIDER
 + LLM_API_KEY) with zero code changes. Provider swap, model fallback, and
 rate-limit backoff all live here — nowhere else.
+When triggered: Whenever ANY node needs to talk to a hosted model (~5–8 times per turn).
+Purpose: Single 3-tier LLM adapter: OpenAI gpt-4o-mini → Together Qwen2.5-7B → Together Mistral-7B; 3 retries + exponential backoff per tier
 
 Architecture ref: §0 guiding decision 1 (hosted API, not local GPU);
 §5 failure-handling budget (exp-backoff ×3, Mistral-7B fallback after 2
@@ -30,24 +32,41 @@ from dotenv import load_dotenv
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-# ── Configuration ─────────────────────────────────────────────────────────────
-# Why constants here: §5 says every failure budget is a named constant, not a
-# magic literal buried in a loop.
+# ── Three-tier model chain ─────────────────────────────────────────────────────
+# Tier 1 (primary):   OpenAI   gpt-4o-mini    — best Arabic + bilingual quality
+# Tier 2 (secondary): Together Qwen2.5-7B     — free tier, strong Arabic reasoning
+# Tier 3 (fallback):  Together Mistral-7B     — last resort, always available
+#
+# Tiers with no API key are skipped at import time — the chain auto-shortens.
+# Override individual model IDs with LLM_MODEL_T1 / T2 / T3 in .env if needed.
+# _current_tier_idx advances permanently after FALLBACK_THRESHOLD failures (§5).
 
-PROVIDER       = os.getenv("LLM_PROVIDER", "stub").lower()
-API_KEY        = os.getenv("LLM_API_KEY", "")
-MODEL_PRIMARY  = os.getenv("LLM_MODEL_PRIMARY", "Qwen/Qwen2.5-7B-Instruct-Turbo")
-MODEL_FALLBACK = os.getenv("LLM_MODEL_FALLBACK", "mistralai/Mistral-7B-Instruct-v0.3")
+_OPENAI_KEY   = os.getenv("OPENAI_API_KEY")   or os.getenv("LLM_API_KEY", "")
+_TOGETHER_KEY = os.getenv("TOGETHER_API_KEY") or os.getenv("LLM_API_KEY", "")
+
+_RAW_TIERS: list[tuple[str, str, str]] = [
+    ("openai",   os.getenv("LLM_MODEL_T1", "gpt-4o-mini"),                         _OPENAI_KEY),
+    ("together", os.getenv("LLM_MODEL_T2", "Qwen/Qwen2.5-7B-Instruct-Turbo"),     _TOGETHER_KEY),
+    ("together", os.getenv("LLM_MODEL_T3", "mistralai/Mistral-7B-Instruct-v0.3"), _TOGETHER_KEY),
+]
+_TIER_CHAIN: list[tuple[str, str, str]] = [
+    t for t in _RAW_TIERS if t[2].strip()
+] or [("stub", "stub", "")]   # always have at least stub so the app never crashes
+
+# Legacy surface — kept for backward compat (sidebar display, existing tests)
+PROVIDER       = _TIER_CHAIN[0][0]
+MODEL_PRIMARY  = _TIER_CHAIN[0][1]
+MODEL_FALLBACK = _TIER_CHAIN[1][1] if len(_TIER_CHAIN) > 1 else _TIER_CHAIN[0][1]
+API_KEY        = _TIER_CHAIN[0][2]
 
 # §5 failure-handling budget
-MAX_RETRIES        = 3          # exponential-backoff retry count
+MAX_RETRIES        = 3          # per-tier retry count (transient errors)
 BACKOFF_BASE_S     = 1.0        # seconds — doubles each retry
-TIMEOUT_S          = 5.0        # per-call timeout (§5 table)
-FALLBACK_THRESHOLD = 2          # consecutive Qwen failures before switching to Mistral
+TIMEOUT_S          = 5.0        # per-call timeout
+FALLBACK_THRESHOLD = 2          # consecutive failures before permanently escalating tier
 
-# Module-level failure counter — tracks consecutive primary-model failures
-# so the orchestrator's fallback edge fires at the right time.
-_consecutive_primary_failures = 0
+_current_tier_idx   = 0   # which tier is currently active
+_tier_failure_count = 0   # consecutive failures on _current_tier_idx
 
 
 # ── Stub responses (offline/CI mode) ──────────────────────────────────────────
@@ -93,11 +112,11 @@ _STUB_ROUTER_TRACKS = {
     "how can you help": ("capabilities",     "general"),
     "what can you do":  ("capabilities",     "general"),
     "what do you know": ("capabilities",     "general"),
-    "crag verdict":     ("instructor_debug", "snapshot"),
-    "explain rrf":      ("instructor_debug", "explain_rrf"),
-    "show last turn":   ("instructor_debug", "snapshot"),
-    "last query":       ("instructor_debug", "snapshot"),
-    "debug":            ("instructor_debug", "snapshot"),
+    "crag verdict":     ("pipeline_debug", "snapshot"),
+    "explain rrf":      ("pipeline_debug", "explain_rrf"),
+    "show last turn":   ("pipeline_debug", "snapshot"),
+    "last query":       ("pipeline_debug", "snapshot"),
+    "debug":            ("pipeline_debug", "snapshot"),
     "wasm":             ("registry_lookup",  "unsupported_dim_wasm"),
     "marginalia":       ("registry_lookup",  "unsupported_dim_marginalia"),
     "stamp":            ("registry_lookup",  "unsupported_dim_library_stamp"),
@@ -215,10 +234,113 @@ def _stub_synthesis_response(prompt: str) -> str:
     return f"يعرض الأرشيف شاهداً ذا صلة: {snippet[:180]} [anchor_id:{anchor_id}]"
 
 
+def _stub_creative_fingerprint() -> str:
+    """Stub style fingerprint for Al-Mulhim offline testing."""
+    return json.dumps({
+        "vocabulary_fingerprint": ["البيداء", "الخيل", "العزيز"],
+        "dominant_imagery": ["desert imagery", "horse metaphors"],
+        "rhyme_sounds": ["-اني", "-ول"],
+        "preferred_meter": "الكامل",
+        "dialect_register": "Khaleeji",
+        "opening_patterns": ["يا"],
+        "thematic_preoccupations": ["longing", "pride"],
+    }, ensure_ascii=False)
+
+
+def _stub_creative_scaffold() -> str:
+    """Stub compositional scaffold for Al-Mulhim offline testing."""
+    return json.dumps({
+        "meter_recommendation": "الكامل — suits the occasion's gravity",
+        "rhyme_scheme": "AABA",
+        "opening_image_suggestions": ["يا ليل الصحراء", "في البيداء ينادي", "والخيل تجري"],
+        "thematic_arc": "Begin with the landscape, move to the human condition.",
+        "dialect_note": "Khaleeji register — use dialect markers like 'يبه', 'زين'.",
+        "exemplar_anchors": ["stub_anchor_1"],
+    }, ensure_ascii=False)
+
+
+def _stub_creative_ajuz() -> str:
+    """Stub ajuz candidates for Al-Musharik offline testing."""
+    return json.dumps({
+        "candidates": [
+            {
+                "ajuz": "والريح تنادي على البعيد",
+                "type": "literal",
+                "meter_ok": True,
+                "rhyme_ok": True,
+                "thematic_score": 4,
+                "annotation": "Extends the wind imagery from the sadr directly.",
+            },
+            {
+                "ajuz": "كالغيم يمضي دون وعيد",
+                "type": "metaphorical",
+                "meter_ok": True,
+                "rhyme_ok": True,
+                "thematic_score": 3,
+                "annotation": "Cloud metaphor introduces transience.",
+            },
+            {
+                "ajuz": "والقلب يبكي للفقيد",
+                "type": "emotional",
+                "meter_ok": True,
+                "rhyme_ok": True,
+                "thematic_score": 5,
+                "annotation": "Emotional pivot — shifts from landscape to grief.",
+            },
+        ]
+    }, ensure_ascii=False)
+
+
+def _stub_creative_hafiz() -> str:
+    """Stub preservation verse for Al-Hafiz offline testing."""
+    return json.dumps({
+        "verse": "تجري الخيل في البيداء والريح تنادي · والقلب يحمل ذكرى الأحبة والوادي",
+        "sadr": "تجري الخيل في البيداء والريح تنادي",
+        "ajuz": "والقلب يحمل ذكرى الأحبة والوادي",
+        "meter": "الكامل",
+        "source_anchors": ["stub_anchor_1", "stub_anchor_2"],
+        "imagery_sources": ["horse imagery from stub_anchor_1"],
+    }, ensure_ascii=False)
+
+
+def _stub_creative_critique() -> str:
+    """Stub poem critique for Al-Muqayyim offline testing."""
+    return json.dumps({
+        "overall_score": 4,
+        "scores": {"meter": 4, "rhyme": 5, "authenticity": 3, "occasion": 4},
+        "summary_ar": "قصيدة جيدة تلتزم بالوزن والقافية مع بعض الهفوات في الأصالة.",
+        "summary_en": "A solid poem with consistent meter and rhyme; authenticity could be stronger.",
+        "annotations": [
+            {
+                "line": "stub verse line",
+                "dimension": "authenticity",
+                "verdict": "weak",
+                "annotation": "Vocabulary leans MSA rather than Khaleeji dialect.",
+                "suggestion": "Replace with Khaleeji equivalents from the corpus.",
+            }
+        ],
+        "strongest_verse": "stub verse line",
+        "weakest_verse": "stub verse line",
+        "priority_fix": "Strengthen dialectal register throughout.",
+    }, ensure_ascii=False)
+
+
 def _stub_response(prompt: str, system: Optional[str] = None) -> str:
     """Return a canned response for offline/CI testing."""
     key = prompt.strip()[:60].lower()
     system_text = system or ""
+
+    # ── Creative composition stubs ────────────────────────────────────────────
+    if "Style Fingerprint Extraction" in system_text:
+        return _stub_creative_fingerprint()
+    if "Compositional Scaffold Generation" in system_text:
+        return _stub_creative_scaffold()
+    if "Ajuz Candidate Generation" in system_text:
+        return _stub_creative_ajuz()
+    if "Voice Preservation Verse" in system_text:
+        return _stub_creative_hafiz()
+    if "Poem Critique" in system_text:
+        return _stub_creative_critique()
 
     if "Grade each retrieved passage" in system_text:
         return _stub_crag_response(prompt)
@@ -260,6 +382,45 @@ def _stub_response(prompt: str, system: Optional[str] = None) -> str:
     return _STUB_RESPONSES["default"]
 
 
+# ── OpenAI provider ───────────────────────────────────────────────────────────
+
+def _chat_openai(
+    prompt: str,
+    system: Optional[str],
+    model: str,
+    max_tokens: int,
+    json_mode: bool,
+    *,
+    api_key: str = "",
+) -> str:
+    """Why OpenAI: GPT-4o-mini has superior Arabic comprehension vs Qwen2.5-7B —
+    better CRAG grading precision, richer poetry synthesis, stronger bilingual output."""
+    try:
+        from openai import OpenAI  # lazy import — not required for stub/together/groq
+    except ImportError as e:
+        raise ImportError(
+            "openai package not installed. Run: pip install openai"
+        ) from e
+
+    client = OpenAI(api_key=api_key or API_KEY)
+    messages: list = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+
+    kwargs: dict = {
+        "model":       model,
+        "messages":    messages,
+        "max_tokens":  max_tokens,
+        "temperature": 0.1,
+    }
+    if json_mode:
+        kwargs["response_format"] = {"type": "json_object"}
+
+    resp = client.chat.completions.create(**kwargs)
+    return resp.choices[0].message.content.strip()
+
+
 # ── Together.ai provider ───────────────────────────────────────────────────────
 
 def _chat_together(
@@ -268,6 +429,8 @@ def _chat_together(
     model: str,
     max_tokens: int,
     json_mode: bool,
+    *,
+    api_key: str = "",
 ) -> str:
     """Why Together.ai: hosts Qwen2.5-7B and Mistral-7B; generous free tier;
     OpenAI-compatible API so the client is trivial to swap."""
@@ -278,7 +441,7 @@ def _chat_together(
             "together package not installed. Run: pip install together"
         ) from e
 
-    client = Together(api_key=API_KEY)
+    client = Together(api_key=api_key or API_KEY)
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
@@ -306,9 +469,10 @@ def _chat_groq(
     model: str,
     max_tokens: int,
     json_mode: bool,
+    *,
+    api_key: str = "",
 ) -> str:
-    """Why Groq: fastest inference on Mistral-7B; good fallback when Together
-    rate-limits during the CRAG + Self-RAG loops."""
+    """Why Groq: fastest inference; good emergency option when Together rate-limits."""
     try:
         from groq import Groq
     except ImportError as e:
@@ -316,7 +480,7 @@ def _chat_groq(
             "groq package not installed. Run: pip install groq"
         ) from e
 
-    client = Groq(api_key=API_KEY)
+    client = Groq(api_key=api_key or API_KEY)
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
@@ -335,28 +499,7 @@ def _chat_groq(
     return resp.choices[0].message.content.strip()
 
 
-# ── Dispatcher with exponential-backoff retry ──────────────────────────────────
-
-def _call_provider(
-    prompt: str,
-    system: Optional[str],
-    model: str,
-    max_tokens: int,
-    json_mode: bool,
-) -> str:
-    """Route to the right provider function. This is the only place that knows
-    which backend is active — callers never import provider SDKs directly."""
-    if PROVIDER == "stub":
-        return _stub_response(prompt, system)
-    elif PROVIDER == "together":
-        return _chat_together(prompt, system, model, max_tokens, json_mode)
-    elif PROVIDER == "groq":
-        return _chat_groq(prompt, system, model, max_tokens, json_mode)
-    else:
-        raise ValueError(
-            f"Unknown LLM_PROVIDER '{PROVIDER}'. Set to 'together', 'groq', or 'stub'."
-        )
-
+# ── Tier-walking dispatcher ────────────────────────────────────────────────────
 
 def chat(
     prompt: str,
@@ -367,97 +510,106 @@ def chat(
 ) -> str | dict:
     """
     Why this is the single public entry point: §0 says 'every LLM call funnels
-    through llm.py'. This enforces the §5 failure budget (backoff, fallback model)
-    in one place so individual nodes never have to think about retries.
+    through llm.py'. The tier-walk enforces the §5 failure budget:
+      Tier 1 (OpenAI gpt-4o-mini) → Tier 2 (Qwen2.5-7B) → Tier 3 (Mistral-7B).
+    On a transient failure the next tier is tried immediately within the same call.
+    After FALLBACK_THRESHOLD failures on a tier it is permanently bypassed.
 
     Args:
-        prompt:      User-turn message sent to the model.
-        system:      Optional system prompt (Arabic governance instructions etc.)
-        json_schema: If provided, enables JSON mode and parses the response.
-                     Pass the schema as a dict for documentation; the model is
-                     instructed to match it, but validation is the caller's job.
-        max_tokens:  Token budget for the response.
-        model:       Override model name. Defaults to MODEL_PRIMARY.
+        prompt:      User-turn message.
+        system:      Optional system prompt.
+        json_schema: Enables JSON mode + auto-parses the response.
+        max_tokens:  Token budget.
+        model:       Override model; defaults to the active tier's model.
 
-    Returns:
-        str if json_schema is None, else dict (parsed JSON).
-
-    Raises:
-        RuntimeError if all retries are exhausted.
+    Returns str (or dict if json_schema given). Raises RuntimeError if all tiers fail.
     """
-    global _consecutive_primary_failures
-
-    target_model = model or MODEL_PRIMARY
-    is_primary   = (target_model == MODEL_PRIMARY)
-    json_mode    = json_schema is not None
-
-    # If we've hit FALLBACK_THRESHOLD consecutive primary failures, switch model
-    if is_primary and _consecutive_primary_failures >= FALLBACK_THRESHOLD:
-        logger.warning(
-            "llm.py: switching to fallback model %s after %d consecutive "
-            "primary failures (§5 fallback-LLM edge).",
-            MODEL_FALLBACK, _consecutive_primary_failures
-        )
-        target_model = MODEL_FALLBACK
-
+    global _current_tier_idx, _tier_failure_count
+    json_mode  = json_schema is not None
     last_error: Optional[Exception] = None
 
-    for attempt in range(MAX_RETRIES):
-        wait = BACKOFF_BASE_S * (2 ** attempt)
+    for tier_idx in range(_current_tier_idx, len(_TIER_CHAIN)):
+        prov, tier_model, key = _TIER_CHAIN[tier_idx]
+        target = model or tier_model
+
         try:
-            result = _call_provider(prompt, system, target_model, max_tokens, json_mode)
+            if prov == "stub":
+                raw = _stub_response(prompt, system)
+            elif prov == "openai":
+                raw = _chat_openai(prompt, system, target, max_tokens, json_mode, api_key=key)
+            elif prov == "together":
+                raw = _chat_together(prompt, system, target, max_tokens, json_mode, api_key=key)
+            elif prov == "groq":
+                raw = _chat_groq(prompt, system, target, max_tokens, json_mode, api_key=key)
+            else:
+                raise ValueError(f"Unknown provider in tier chain: {prov!r}")
 
-            # Success — reset failure counter
-            if is_primary:
-                _consecutive_primary_failures = 0
+            # ── Success ──────────────────────────────────────────────────────
+            if tier_idx > _current_tier_idx:
+                logger.info(
+                    "llm.py: tier %d (%s/%s) succeeded after lower tier(s) failed.",
+                    tier_idx + 1, prov, target,
+                )
+            _tier_failure_count = 0
 
-            # Parse JSON if requested
-            if json_schema is not None:
+            if json_mode:
                 try:
-                    return json.loads(result)
+                    return json.loads(raw)
                 except json.JSONDecodeError:
-                    # Try to extract JSON from markdown fences
-                    cleaned = result.strip()
+                    cleaned = raw.strip()
                     if cleaned.startswith("```"):
-                        lines = cleaned.split("\n")
-                        cleaned = "\n".join(lines[1:])
-                        cleaned = cleaned.rsplit("```", 1)[0].strip()
+                        lines   = cleaned.split("\n")
+                        cleaned = "\n".join(lines[1:]).rsplit("```", 1)[0].strip()
                     return json.loads(cleaned)
-
-            return result
+            return raw
 
         except Exception as exc:
             last_error = exc
             logger.warning(
-                "llm.py: attempt %d/%d failed for model %s: %s. Retrying in %.1fs.",
-                attempt + 1, MAX_RETRIES, target_model, exc, wait
+                "llm.py: tier %d (%s/%s) failed: %s — trying next tier.",
+                tier_idx + 1, prov, target, exc,
             )
-            if attempt < MAX_RETRIES - 1:
-                time.sleep(wait)
-
-    # All retries exhausted
-    if is_primary:
-        _consecutive_primary_failures += 1
+            _tier_failure_count += 1
+            if _tier_failure_count >= FALLBACK_THRESHOLD and tier_idx + 1 < len(_TIER_CHAIN):
+                _current_tier_idx   = tier_idx + 1
+                _tier_failure_count = 0
+                logger.warning(
+                    "llm.py: permanently escalating to tier %d (%s/%s) after %d failures.",
+                    _current_tier_idx + 1,
+                    _TIER_CHAIN[_current_tier_idx][0],
+                    _TIER_CHAIN[_current_tier_idx][1],
+                    FALLBACK_THRESHOLD,
+                )
 
     raise RuntimeError(
-        f"llm.py: all {MAX_RETRIES} retries exhausted for model {target_model}. "
-        f"Last error: {last_error}"
+        f"llm.py: all {len(_TIER_CHAIN)} tier(s) exhausted. Last error: {last_error}"
     )
 
 
 def reset_failure_counter() -> None:
-    """Reset the consecutive-failure counter. Used in tests and after a
-    successful fallback so the system tries the primary model again next query."""
-    global _consecutive_primary_failures
-    _consecutive_primary_failures = 0
+    """Reset tier tracking. Used in tests and after key rotation."""
+    global _current_tier_idx, _tier_failure_count
+    _current_tier_idx   = 0
+    _tier_failure_count = 0
 
 
 def get_provider_info() -> dict:
-    """Return current provider config — surfaced in the Streamlit debug panel."""
+    """Return active tier info — surfaced in the Streamlit sidebar."""
+    if not _TIER_CHAIN:
+        return {"error": "no tiers configured", "ready_for_inference": False}
+    prov, model, key = _TIER_CHAIN[_current_tier_idx]
+    key_set = bool(key and key.strip())
+    ready   = (prov == "stub") or key_set
+    labels  = ("primary", "secondary", "fallback")
     return {
-        "provider":       PROVIDER,
-        "model_primary":  MODEL_PRIMARY,
-        "model_fallback": MODEL_FALLBACK,
-        "consecutive_failures": _consecutive_primary_failures,
-        "using_fallback": _consecutive_primary_failures >= FALLBACK_THRESHOLD,
+        "provider":            prov,
+        "model_primary":       model,
+        "tier":                _current_tier_idx + 1,
+        "tier_total":          len(_TIER_CHAIN),
+        "tier_label":          labels[min(_current_tier_idx, 2)],
+        "tier_chain":          [(p, m) for p, m, _ in _TIER_CHAIN],
+        "using_fallback":      _current_tier_idx > 0,
+        "consecutive_failures": _tier_failure_count,
+        "api_key_set":         key_set,
+        "ready_for_inference": ready,
     }

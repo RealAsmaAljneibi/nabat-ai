@@ -5,6 +5,8 @@ Why this file exists: M7 — the single public entry point that stitches Agent 1
 (Query Understanding) and Agent 2 (Retrieval & Synthesis) into one callable
 function. Callers — the Streamlit UI, the CLI, and the test suite — all go
 through `run()`. Nothing else imports or wires the two agents together.
+When triggered: The moment Streamlit (or CLI / MCP / tests) calls run() / run_agent1() / run_agent2() / run_creative().
+Purpose: Public entry point — wires Agent 1 → 2 via QueryContext handoff; never raises; always returns a displayable dict
 
 Design principle: LangGraph-first, direct-node fallback.
   - If langgraph is installed, we use the compiled graphs from agent1/graph.py
@@ -45,8 +47,9 @@ try:
     _LANGGRAPH_AVAILABLE = True
 except ImportError:
     _LANGGRAPH_AVAILABLE = False
-    logger.info(
-        "orchestrator: langgraph not installed — will call nodes directly."
+    logger.warning(
+        "orchestrator: langgraph not installed — CRAG re-query and Self-RAG "
+        "retry loops are DISABLED. Install langgraph for full agentic behaviour."
     )
 
 
@@ -159,7 +162,7 @@ def _run_agent1(state: AgentState) -> AgentState:
 
     # Stage 0.5b — semantic router (LLM-backed 4-track classifier).
     # Only runs when Stage 0.5a did not short-circuit. Catches capabilities,
-    # instructor_debug, and other non-poetic queries the regex can't detect.
+    # pipeline_debug, and other non-poetic queries the regex can't detect.
     if "semantic_router" in nodes:
         state = nodes["semantic_router"](state)
         qc_after_semantic = state.get("query_context") or {}
@@ -229,8 +232,12 @@ def _run_agent2(state: AgentState) -> AgentState:
         try:
             from .agent2_retrieval_synthesis.graph import get_agent2_graph
             return get_agent2_graph().invoke(state)
-        except ImportError:
-            pass  # fall through to direct-node path
+        except ImportError as _graph_exc:
+            logger.warning(
+                "orchestrator: Agent 2 graph failed to load (%s) — "
+                "CRAG re-query and Self-RAG loops are DISABLED for this run.",
+                _graph_exc,
+            )
 
     # ── Direct-node fallback (no LangGraph) ──────────────────────────────────
     for stage in (
@@ -377,6 +384,86 @@ def run(
     if state.get("agent2_error") or (state.get("guardrail_flags") or []) == ["catastrophic_failure"]:
         return state
     return run_agent2(state)
+
+# ── Creative composition entry point ─────────────────────────────────────────
+# Worker 4 — routes to src/creative_poet/ based on CompositionContext.mode.
+# Kept in the orchestrator so the UI has one import to call regardless of pipeline.
+
+def run_creative(
+    composition_context: dict,
+    conversation_history: Optional[list] = None,
+) -> dict:
+    """
+    Run the creative composition pipeline for one request.
+
+    Analogous to run() for the RAG pipeline: dispatches to the correct creative
+    agent (Al-Mulhim, Al-Musharik, Al-Hafiz, Al-Muqayyim) based on
+    composition_context["mode"], then returns the full CompositionState dict.
+
+    Never raises — always returns a displayable dict.
+
+    Args:
+        composition_context: CompositionContext-shaped dict with at minimum:
+            {
+              "mode":         "scaffold" | "coauthor" | "preserve" | "critique",
+              "target_poet":  str (required for scaffold/preserve),
+              "input_sadr":   str (required for coauthor),
+              "input_poem":   str (required for critique),
+              "occasion":     str (optional),
+              "genre":        str (optional),
+            }
+        conversation_history: M9 cross-turn memory — last-N search turns from
+            the same session. Threaded into CompositionState so creative
+            agents can reference prior search context.
+    """
+    from fatat_al_arab.state import make_composition_state
+
+    state = make_composition_state(composition_context)
+    if conversation_history:
+        state["conversation_history"] = list(conversation_history)[-5:]
+
+    try:
+        from creative_poet.graph import get_creative_graph
+        return get_creative_graph().invoke(state)
+
+    except ImportError:
+        # Direct-node fallback when LangGraph is not installed
+        mode = composition_context.get("mode", "scaffold")
+        logger.warning(
+            "orchestrator.run_creative: langgraph unavailable — "
+            "running %s node directly (no badge enforcement for preserve mode).",
+            mode,
+        )
+        if mode == "scaffold":
+            from creative_poet.nodes.mulhim import mulhim_node
+            return mulhim_node(state)
+        elif mode == "coauthor":
+            from creative_poet.nodes.musharik import musharik_node
+            return musharik_node(state)
+        elif mode == "preserve":
+            from creative_poet.nodes.hafiz import hafiz_node
+            from creative_poet.nodes.composition_guardrails import enforce_attribution
+            state = hafiz_node(state)
+            return enforce_attribution(state)  # badge gate still runs in direct mode
+        elif mode == "critique":
+            from creative_poet.nodes.muqayyim import muqayyim_node
+            return muqayyim_node(state)
+        else:
+            return {**state, "final_output": f"Unknown composition mode: {mode!r}"}
+
+    except Exception as exc:
+        logger.error("orchestrator.run_creative: unexpected error — %s: %s", type(exc).__name__, exc)
+        return {
+            "composition_context": composition_context,
+            "final_output": (
+                f"تعذّر التوليد الإبداعي.\n"
+                f"Creative pipeline error: {type(exc).__name__}: {exc}"
+            ),
+            "guardrail_passed": False,
+            "guardrail_flags":  ["catastrophic_failure"],
+            "agent_trace":      [],
+        }
+
 
 # ── Catastrophic failure helper ───────────────────────────────────────────────
 

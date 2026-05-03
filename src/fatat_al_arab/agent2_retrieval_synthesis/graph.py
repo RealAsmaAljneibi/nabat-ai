@@ -3,6 +3,8 @@ src/fatat_al_arab/agent2_retrieval_synthesis/graph.py
 ======================================================
 Why this file exists: §2.5 Agent 2 — wires all ten stages into a LangGraph
 StateGraph with three conditional loops.
+When triggered: At process start (compiled once); invoked by orchestrator.run_agent2() per turn.
+Purpose: LangGraph StateGraph for Stages 4-10 with conditional edges (CRAG re-query, CRAG verdict re-query, Self-RAG retry).
 
 Stage sequence (§2.5):
   Stage 4  → retrieve

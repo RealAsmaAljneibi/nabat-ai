@@ -6,6 +6,8 @@ Bilingual Expand) both need EN↔AR translation, but they must not import any LL
 SDK directly (§0 guiding decision 1). This module is the single translation entry
 point: it accepts text in either language and returns both {ar, en} regardless of
 the input language, reusing the same exponential-backoff logic inside llm.py.
+When triggered: Called from bilingual_analyzer (Stage 1) when query needs AR↔EN translation.
+Purpose: Thin wrapper: AR↔EN translation via llm.chat()
 
 Architecture refs: §2.4 Stage 1 (lang ID), §2.4 Stage 2 (bilingual expand),
 §5 (Agent 1 translation budget: 0 retries, 3 s timeout — if this call fails the

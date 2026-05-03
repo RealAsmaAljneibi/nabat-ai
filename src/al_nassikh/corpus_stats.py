@@ -6,8 +6,9 @@ poems, not to *count* them. When a user asks "how many poems are in this
 corpus?" or "how old are these manuscripts?", semantic retrieval returns a
 noisy set of unrelated verses because no chunk in the Qdrant index contains a
 count or a date — so CRAG marks the passages "Incorrect" and the pipeline
-fires the refusal template. That is exactly what happened when Asma ran the
-app on 2026-04-23.
+fires the refusal template. 
+Where it's called:deterministic_answer.pynabat_mcp_server.py, app. 
+Purpose: Provides deterministic answers for counting and metadata queries
 
 The fix is a deterministic answer path: a tiny aggregations module that
 computes the answer once, at import time, from the two ground-truth JSON
@@ -70,17 +71,18 @@ def _repo_root() -> Path:
 _GROUND_TRUTH = _repo_root() / "data" / "ground_truth"
 _REGISTRY_PATH = _GROUND_TRUTH / "manuscript_registry.json"
 # Registry preference order — mirrors fatat_al_arab/index.py DEFAULT_REGISTRY:
-#   1. anchor_registry_full_enriched.json  — Phase 1-4, genre-tagged (2,222 entries) ← preferred
-#   2. anchor_registry_full.json           — Phase 1-4, no genre tags
-#   3. anchor_registry_phase4_enriched.json — Phase 4 only, genre-tagged (1,502 entries)
-#   4. anchor_registry_phase4.json         — Phase 4 only, no genre tags
-# Genre-aware counting (count_poems_by_genre) requires an enriched file; falling
-# back to un-enriched returns 0 for every genre without crashing.
+#   1. unified_registry.json               — all source types (4031 entries) ← preferred
+#   2. anchor_registry_full_enriched.json  — Phase 1-4, genre-tagged (manuscript only)
+#   3. anchor_registry_full.json           — Phase 1-4, no genre tags
+#   4. anchor_registry_phase4_enriched.json — Phase 4 only, genre-tagged (1,502 entries)
+#   5. anchor_registry_phase4.json         — Phase 4 only, no genre tags
+_UNIFIED_REGISTRY = _repo_root() / "data" / "unified_registry.json"
 _FULL_ENRICHED    = _GROUND_TRUTH / "anchor_registry_full_enriched.json"
 _FULL_PLAIN       = _GROUND_TRUTH / "anchor_registry_full.json"
 _ANCHORS_ENRICHED = _GROUND_TRUTH / "anchor_registry_phase4_enriched.json"
 _ANCHORS_BASE     = _GROUND_TRUTH / "anchor_registry_phase4.json"
 _ANCHORS_PATH = (
+    _UNIFIED_REGISTRY if _UNIFIED_REGISTRY.exists() else
     _FULL_ENRICHED    if _FULL_ENRICHED.exists()    else
     _FULL_PLAIN       if _FULL_PLAIN.exists()       else
     _ANCHORS_ENRICHED if _ANCHORS_ENRICHED.exists() else
@@ -116,7 +118,7 @@ def count_bayts() -> int:
     Each registry entry = one bayt. This includes:
       - Phase 1-3: 720 bayts from ~39 fully transcribed poem pages
       - Phase 4:   1,502 matla bayts (opening verse of each TOC poem)
-    Total: 2,222 bayts. NOT 2,222 poems.
+    Returns the count from the loaded registry. NOT poem count — bayt count.
     """
     return len(_ANCHORS)
 

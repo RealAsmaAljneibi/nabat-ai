@@ -7,14 +7,10 @@ parsed dict from al_nassikh.parser) and surfaces every text line whose
 annotator-assigned confidence is below the acceptability threshold. Lines that
 pass the gate proceed to Phase-4 merge; lines that fail go back to the annotator
 for correction or are marked as LOW confidence in the anchor registry.
+Where it's called: tests. Purpose: Routes low-confidence pages to human review vs auto-accept
 
-Architecture ref: §2.3 Stage 8. §2.1 CER tiers: HIGH (<10%), MEDIUM (10-25%),
-LOW (≥25%). The gate here is on annotator confidence, not CER, because CER
-requires a reference — this stage runs before reference validation.
-
-The function is deterministic and has no side effects — it reads the PAGE-XML
-and returns a report dict. The Streamlit tab displays the report; the annotator
-decides what to do with each flagged line.
+Architecture ref: §2.3 Stage 8. §2.1 CER tiers: HIGH (<10%), MEDIUM (10-25%), LOW (≥25%). The gate here is on annotator confidence, not CER, because CER requires a reference — this stage runs before reference validation.
+The function is deterministic and has no side effects — it reads the PAGE-XML and returns a report dict. The Streamlit tab displays the report; the annotator decides what to do with each flagged line.
 """
 
 from __future__ import annotations

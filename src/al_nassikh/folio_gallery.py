@@ -3,7 +3,11 @@ al_nassikh/folio_gallery.py
 ============================
 Why this exists: the Streamlit Scholar Workbench should let users browse actual
 manuscript folio images for a chosen poet or manuscript — not just read text
-excerpts. This module resolves the image file names stored in the anchor registry
+excerpts.  Where it's called: app (live query)
+  Purpose: Resolves manuscript folio images 
+    by poet/page for the image viewer in Tab A
+    test. Purpose: Resolves manuscript folio images by poet/page for the image viewer in Tab A
+This module resolves the image file names stored in the anchor registry
 to actual paths on disk, then provides two lookup helpers:
 
   get_images_for_manuscript(short_key)  → sorted list of Path objects

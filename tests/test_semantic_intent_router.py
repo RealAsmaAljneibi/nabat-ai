@@ -101,10 +101,10 @@ class TestValidateQueryContext:
         from fatat_al_arab.state import validate_query_context
         validate_query_context({"track": "capabilities", "answer_source": "registry_lookup"})
 
-    def test_instructor_debug_requires_registry_lookup(self):
+    def test_pipeline_debug_requires_registry_lookup(self):
         from fatat_al_arab.state import validate_query_context
         with pytest.raises(ValueError):
-            validate_query_context({"track": "instructor_debug", "answer_source": "rag_pipeline"})
+            validate_query_context({"track": "pipeline_debug", "answer_source": "rag_pipeline"})
 
     def test_no_track_no_error(self):
         from fatat_al_arab.state import validate_query_context
@@ -189,7 +189,7 @@ class TestSemanticRouterStub:
         assert qc.get("track") == "capabilities"
         assert qc.get("answer_source") == "registry_lookup"
 
-    def test_instructor_debug_query(self):
+    def test_pipeline_debug_query(self):
         from fatat_al_arab.agent1_query_understanding.nodes.semantic_router import (
             semantic_router_node, _classify_cached,
         )
@@ -198,7 +198,7 @@ class TestSemanticRouterStub:
         state["query_context"] = {"answer_source": "rag_pipeline"}
         result = semantic_router_node(state)
         qc = result.get("query_context") or {}
-        assert qc.get("track") == "instructor_debug"
+        assert qc.get("track") == "pipeline_debug"
 
     def test_poetic_rag_default(self):
         from fatat_al_arab.agent1_query_understanding.nodes.semantic_router import (
@@ -321,7 +321,7 @@ class TestOrchestratorRouting:
         # Should mention either "Cultural Institutions" or the Arabic equivalent
         assert ("Cultural Institutions" in final or "المؤسسات الثقافية" in final)
 
-    def test_run_agent2_instructor_no_snapshot_returns_gentle_refusal(self):
+    def test_run_agent2_pipeline_debug_no_snapshot_returns_gentle_refusal(self):
         from fatat_al_arab.orchestrator import run_agent1, run_agent2
         state = run_agent1("what was your crag verdict?")
         # Ensure no debug_snapshot
@@ -329,7 +329,7 @@ class TestOrchestratorRouting:
         result = run_agent2(state)
         final = result.get("final_response", "")
         flags = result.get("guardrail_flags") or []
-        assert "instructor_debug" in flags
+        assert "pipeline_debug" in flags
         assert "snapshot" in final.lower() or "prior" in final.lower() or "لقطة" in final
 
     def test_run_agent2_unsupported_dimension_does_not_call_retriever(self):

@@ -4,6 +4,8 @@ src/fatat_al_arab/retrievers/bm25.py
 Why this file exists: BM25 is the sparse retriever leg of the triple-hybrid
 pipeline. It is the backstop for exact-token queries — poet names, volume
 identifiers, rare Nabati words — where dense vector similarity degrades.
+When triggered: Inside retrieve_node (Stage 4) — runs in parallel with the other two.
+Purpose: BM25Okapi sparse keyword search over normalised Arabic tokens — strongest on exact poet names + rare roots.
 
 Architecture:
   - BM25Retriever wraps fatat_al_arab.embed.BM25Index.
@@ -73,3 +75,26 @@ class BM25Retriever:
 
     def __len__(self) -> int:
         return len(self._chunks)
+
+
+# ── Module-level singleton ─────────────────────────────────────────────────
+# Why: BM25 index construction tokenises all ~4,700 chunks and builds an
+# inverted index; doing this per query adds ~300 ms. The full-corpus retriever
+# is read-only after build so it is safe to share across LangGraph re-entries.
+# Hard filters are applied post-hoc in retrieve.py on the returned ScoredChunks.
+
+_BM25_RETRIEVER: "BM25Retriever | None" = None
+
+
+def get_bm25_retriever(chunks: list[ScoredChunk]) -> "BM25Retriever":
+    """Return cached BM25Retriever, building it once from chunks on first call."""
+    global _BM25_RETRIEVER
+    if _BM25_RETRIEVER is None:
+        _BM25_RETRIEVER = BM25Retriever(chunks)
+    return _BM25_RETRIEVER
+
+
+def set_bm25_retriever(retriever: "BM25Retriever") -> None:
+    """Inject a pre-built retriever — used in tests to avoid disk/model access."""
+    global _BM25_RETRIEVER
+    _BM25_RETRIEVER = retriever

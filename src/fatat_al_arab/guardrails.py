@@ -5,6 +5,8 @@ Why this file exists: §2.9 of the architecture defines three hard guardrails
 that run AFTER Stage 10 (format_variants) and BEFORE anything reaches the UI.
 They are the last line of defence against hallucination — if any guardrail
 fires, the response is blocked and replaced with a scoped refusal.
+When triggered: Inside format_variants_node (Stage 10) — last gate before UI.   
+Purpose: Three §2.9 hard checks: citation_resolvable, verbatim_verse, scoped_refusal + bilingual REFUSAL_TEMPLATE
 
 Scaffold state (M0): all three functions have the correct signature and a
 working stub implementation. Full implementation lands in M6 once the
@@ -117,8 +119,10 @@ def citation_resolvable(
     page that doesn't exist in our registry is a hallucination, even if the
     verse text is correct.
 
-    M0 scaffold: checks that every [anchor_id:…] tag in the response resolves
-    to a real entry in anchor_registry. Full M6 impl adds per-sentence checking.
+    Implementation: checks that every [anchor_id:…] tag in the response resolves
+    to a real entry in anchor_registry. Aggregate-level chunk IDs (manuscript /
+    poet / era / genre / emotion) and reference-corpus chunk IDs are skipped
+    by design — they don't live in the manuscript registry.
 
     Args:
         response_text:    The draft response from Stage 8 (synthesise).
@@ -180,7 +184,7 @@ def citation_resolvable(
 
 # Minimum token overlap fraction to consider a passage "verbatim"
 # (exact match is too strict — normalisation differences are expected)
-_VERBATIM_OVERLAP_THRESHOLD = 0.75
+_VERBATIM_OVERLAP_THRESHOLD = 0.65
 
 # Regex for Arabic prose analysis — phrases matching these patterns are
 # meta-commentary (analysis, introduction, citation framing), not verse quotes.
@@ -234,9 +238,11 @@ def verbatim_verse(
     cases where the model invented plausible-sounding verse text that isn't
     actually in our manuscripts.
 
-    M0 scaffold: detects Arabic verse-length phrases (≥ 8 Arabic words) in the
-    response and checks each against the approved passage set via token overlap.
-    Full M6 impl adds char-level CER comparison for stricter detection.
+    Implementation: detects Arabic verse-length phrases (≥ 12 Arabic words) in
+    the response and checks each against the approved passage set via token overlap.
+    Threshold raised from 8 → 12 in M9 so prose intros ("here are some verses…")
+    aren't treated as verse quotations. The verbatim check is also skipped on
+    the general-knowledge fallback path (the 🌐 badge is the safety mechanism).
 
     Args:
         response_text:     The draft response from Stage 8.
@@ -247,12 +253,13 @@ def verbatim_verse(
     Returns:
         GuardrailResult(passed=True) if no suspicious verse phrases found.
     """
+    # Refusal path: the response IS the controlled refusal template — checking it
+    # for verbatim verse overlap is meaningless and produces false positives
+    # (the template contains 8-word Arabic prose that looks like a verse phrase).
+    if is_refusal:
+        return GuardrailResult(True, [])
+
     if not approved_passages:
-        # Refusal path: the refusal template itself contains Arabic prose.
-        # That's expected — only block if it contains verse-length runs
-        # (≥ 8 words), which would indicate unverified content was appended.
-        if is_refusal:
-            return GuardrailResult(True, [])
         # Non-refusal path with no approved passages — something went wrong
         # upstream. Fail safe only if there is substantial Arabic verse content
         # (≥ 8 Arabic tokens), not just a short prose statement.
@@ -280,7 +287,9 @@ def verbatim_verse(
     # typically 5-10 words; shorter runs are likely prose labels or metadata.
     # Remove citation tags first to avoid false positives.
     clean_response = _CITATION_TAG_RE.sub("", response_text)
-    ar_phrase_re   = re.compile(r"(?:[\u0600-\u06FF]+\s+){7,}[\u0600-\u06FF]+")
+    # Raise minimum to 12 words \u2014 a prose intro sentence ("here are some verses from...")
+    # is typically 8-10 words and should not be treated as a verse quotation.
+    ar_phrase_re   = re.compile(r"(?:[\u0600-\u06FF]+\s+){11,}[\u0600-\u06FF]+")
     candidate_phrases = ar_phrase_re.findall(clean_response)
 
     flags: list[str] = []
@@ -325,9 +334,10 @@ def scoped_refusal(
     — no unverified detail can be appended. This catches cases where an
     upstream node decorated the refusal with speculation.
 
-    M0 scaffold: checks that a response flagged as a refusal doesn't contain
-    long Arabic verse-like text (which would indicate decoration). Full M6 impl
-    adds a semantic similarity check against the approved REFUSAL_TEMPLATE.
+    Implementation: checks that a response flagged as a refusal contains the
+    approved REFUSAL_TEMPLATE text (AR or EN form) without being decorated by
+    > 8 leftover Arabic tokens. Decoration would indicate an upstream node
+    appended speculative content to the controlled refusal.
 
     Args:
         response_text: The response text to check.

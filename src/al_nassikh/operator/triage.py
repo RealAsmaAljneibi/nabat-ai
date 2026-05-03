@@ -7,6 +7,7 @@ begins. A DEGRADED page (extreme bleed-through, physical damage, heavy noise)
 sent directly to Kraken will produce garbage baselines that mislead the HITL
 annotator. The triage step surfaces these early so they can go to a specialist
 track instead.
+Where it's called: app Tab B (live), tests. Purpose: Classifies pages as NORMAL vs DEGRADED before running HTR
 
 The function is intentionally a pure predicate — it takes an image and returns
 a structured decision dict. The Streamlit tab renders this; the annotator

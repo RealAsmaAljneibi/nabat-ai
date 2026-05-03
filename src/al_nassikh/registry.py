@@ -6,7 +6,7 @@ the manuscript inventory in human-readable form ("Ibn Yahya Manuscript (401-600)
 rather than the internal short keys used throughout the data pipeline. This module
 loads manuscript_registry.json once at import time and exposes four stable helper
 functions the UI, the retriever, and the evaluation harness can all use without
-re-reading the file.
+re-reading the file.  Where it's called: self_query.py (live query), testsPurpose: Manuscript registry phone book, by_short_key, by_filename, list_all
 
 Architecture ref: §2.3 (Al-Nassikh) states that every manuscript identifier in
 the pipeline must resolve to a canonical Arabic + English name pair via this
