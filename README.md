@@ -2,7 +2,7 @@
 
 > **Course:** MAAI1704 – Generative AI  
 > **Student:** Asma Salem Mubarak Najem Aljneibi  
-> **Deliverable:** Graded MAAI1704 Project — Runs without Docker, GPU, or paid APIs.
+> **Deliverable:** GenAI MAAI1704 Project — Runs without Docker, GPU, or paid APIs.
 
 ## Overview
 
