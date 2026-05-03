@@ -2601,6 +2601,7 @@ def _render_sidebar() -> None:
         else:
             if st.button("Enter the workbench →", key="sidebar_enter_wb"):
                 st.session_state["page"] = "workbench"
+                st.session_state["active_tab"] = "workbench"
                 st.rerun()
 
     st.sidebar.markdown('<div class="s-divider" style="margin:3px 0"></div>', unsafe_allow_html=True)
@@ -2644,6 +2645,7 @@ div[data-testid="stSidebarContent"] .tab-nav-btn.inactive button:hover {
         if st.button("📚 Scholar Workbench · منضدة الباحث", key="tab_btn_workbench",
                      use_container_width=True):
             st.session_state["active_tab"] = "workbench"
+            st.session_state["page"] = "workbench"
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -2651,6 +2653,7 @@ div[data-testid="stSidebarContent"] .tab-nav-btn.inactive button:hover {
         if st.button("🗂️ Archive Manager · إدارة الأرشيف", key="tab_btn_archive",
                      use_container_width=True):
             st.session_state["active_tab"] = "archive"
+            st.session_state["page"] = "workbench"
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -2661,9 +2664,10 @@ div[data-testid="stSidebarContent"] .tab-nav-btn.inactive button:hover {
         # honestly (including failing targets) is stronger than hiding numbers.
         gov_class = "active" if active_tab == "governance" else "inactive"
         st.markdown(f'<div class="tab-nav-btn {gov_class}">', unsafe_allow_html=True)
-        if st.button("📊 Governance & Metrics · الحوكمة والمقاييس", key="tab_btn_governance",
+        if st.button("📊 Dashboard · الحوكمة والمقاييس", key="tab_btn_governance",
                      use_container_width=True):
             st.session_state["active_tab"] = "governance"
+            st.session_state["page"] = "workbench"
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -3882,6 +3886,7 @@ footer { display: none !important; }
     with col_enter:
         if st.button("Enter the workbench →", key="hero_enter_wb", use_container_width=True):
             st.session_state["page"] = "workbench"
+            st.session_state["active_tab"] = "workbench"
             st.rerun()
     with col_browse:
         if st.button("Browse the corpus", key="hero_browse_corpus", use_container_width=True):
@@ -3890,9 +3895,201 @@ footer { display: none !important; }
     st.markdown('</div>', unsafe_allow_html=True)
 
 
+def _corpus_kpi_card(icon: str, value: str, label: str) -> str:
+    """Single KPI tile for the corpus analytics dashboard."""
+    return (
+        f'<div style="background:#F4ECDD;border:1px solid #D8C9AA;border-radius:12px;'
+        f'padding:18px 20px;text-align:center">'
+        f'<div style="font-size:26px;margin-bottom:4px">{icon}</div>'
+        f'<div style="font-size:30px;font-weight:700;color:#5E3A1C;font-family:Fraunces,serif;line-height:1">{value}</div>'
+        f'<div style="font-size:11px;color:#8B5A2B;margin-top:8px;letter-spacing:.09em;text-transform:uppercase">{label}</div>'
+        f'</div>'
+    )
+
+
+def _render_corpus_analytics(records: list, genre_bilingual: dict) -> None:
+    """
+    Analytics dashboard rendered at the top of the Browse Corpus page.
+    Why this exists: the page was empty above the filter table; charts give
+    professors and demo reviewers an immediate quantitative sense of the corpus.
+    """
+    from collections import Counter
+
+    total = len(records)
+    if total == 0:
+        return
+
+    UNNAMED = {"غير محدد", "unknown", "—", ""}
+
+    # Unique poems by parent_poem_id (each anchor is a verse; poems group multiple verses)
+    unique_poems = len({r.get("parent_poem_id") or r.get("anchor_id", i)
+                        for i, r in enumerate(records)})
+
+    # Source breakdown
+    src = Counter(r.get("source_type", "manuscript") for r in records)
+
+    # Unique named poets
+    named_poets = {r.get("poet_name", "") for r in records if r.get("poet_name", "") not in UNNAMED}
+
+    # Manuscripts
+    manuscripts = {r.get("manuscript_short_key", "") for r in records if r.get("manuscript_short_key")}
+
+    # Genre coverage (based on unique poems, not verses)
+    genre_tagged = len({r.get("parent_poem_id") or r.get("anchor_id", i)
+                        for i, r in enumerate(records)
+                        if r.get("genre") and r.get("genre") != "غير_محدد"})
+    genre_pct = int(genre_tagged / unique_poems * 100) if unique_poems else 0
+
+    # ── KPI row ──────────────────────────────────────────────────────────────
+    st.markdown(
+        '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:24px 0 16px">'
+        + _corpus_kpi_card("📜", f"{unique_poems:,}", "Total Poems")
+        + _corpus_kpi_card("✍️", f"{len(named_poets):,}", "Named Poets")
+        + _corpus_kpi_card("📚", f"{len(manuscripts):,}", "Manuscripts")
+        + _corpus_kpi_card("🏷️", f"{genre_pct}%", "Genre Tagged")
+        + "</div>",
+        unsafe_allow_html=True,
+    )
+
+    # ── Source breakdown mini-row ────────────────────────────────────────────
+    ms_n   = src.get("manuscript", 0)
+    oral_n = src.get("oral_tradition", 0)
+    web_n  = src.get("online_digitized", 0)
+    st.markdown(
+        f'<div style="display:flex;gap:10px;margin-bottom:28px">'
+        f'<div style="flex:1;background:#EFE5D0;border:1px solid #D8C9AA;border-radius:10px;padding:12px 18px;display:flex;align-items:center;gap:12px">'
+        f'<span style="font-size:22px">🗂️</span>'
+        f'<div><div style="font-size:22px;font-weight:600;color:#5E3A1C;font-family:Fraunces,serif">{ms_n:,}</div>'
+        f'<div style="font-size:11px;color:#8B5A2B;letter-spacing:.06em">Manuscript anchors</div></div></div>'
+        f'<div style="flex:1;background:#EFE5D0;border:1px solid #D8C9AA;border-radius:10px;padding:12px 18px;display:flex;align-items:center;gap:12px">'
+        f'<span style="font-size:22px">🎤</span>'
+        f'<div><div style="font-size:22px;font-weight:600;color:#5E3A1C;font-family:Fraunces,serif">{oral_n:,}</div>'
+        f'<div style="font-size:11px;color:#8B5A2B;letter-spacing:.06em">Oral tradition</div></div></div>'
+        f'<div style="flex:1;background:#EFE5D0;border:1px solid #D8C9AA;border-radius:10px;padding:12px 18px;display:flex;align-items:center;gap:12px">'
+        f'<span style="font-size:22px">🌐</span>'
+        f'<div><div style="font-size:22px;font-weight:600;color:#5E3A1C;font-family:Fraunces,serif">{web_n:,}</div>'
+        f'<div style="font-size:11px;color:#8B5A2B;letter-spacing:.06em">Online digitized</div></div></div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    # ── Plotly charts ────────────────────────────────────────────────────────
+    try:
+        import plotly.graph_objects as go
+
+        GENRE_COLORS = {
+            "غزل": "#C8856A", "رثاء": "#4A6580", "مديح": "#6B8159",
+            "هجاء": "#B4502E", "فخر": "#A07040", "حكمة": "#8B5A2B",
+            "وصف": "#7A9070", "دينية": "#5E6B8B", "غزو": "#7A4A2B",
+            "حماسة": "#9B7B50",
+        }
+        _CHART_LAYOUT = dict(
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(244,236,221,0.35)",
+            margin=dict(l=0, r=48, t=44, b=16),
+            font=dict(family="IBM Plex Sans, sans-serif"),
+        )
+
+        # Chart 1: Genre distribution
+        genre_counts = Counter(
+            r.get("genre", "") for r in records
+            if r.get("genre") and r.get("genre") != "غير_محدد"
+        )
+        sorted_genres = sorted(genre_counts.items(), key=lambda x: x[1])
+        g_labels = []
+        for g, _ in sorted_genres:
+            bi = genre_bilingual.get(g, g)
+            en = bi.split(" — ")[1] if " — " in bi else ""
+            g_labels.append(f"{g}  {en}" if en else g)
+        g_vals   = [v for _, v in sorted_genres]
+        g_colors = [GENRE_COLORS.get(g, "#A09080") for g, _ in sorted_genres]
+
+        fig_genre = go.Figure(go.Bar(
+            x=g_vals, y=g_labels, orientation="h",
+            marker_color=g_colors,
+            text=g_vals, textposition="outside",
+            textfont=dict(size=11, color="#5E3A1C"),
+        ))
+        fig_genre.update_layout(
+            title=dict(text="Genre Distribution / توزيع الأنواع", font=dict(size=13, color="#5E3A1C"), x=0),
+            height=380,
+            xaxis=dict(showgrid=True, gridcolor="#D8C9AA", tickfont=dict(size=10)),
+            yaxis=dict(tickfont=dict(size=11, family="IBM Plex Sans Arabic, sans-serif"), automargin=True),
+            **_CHART_LAYOUT,
+        )
+
+        # Chart 2: Top 10 named poets
+        poet_counts = Counter(
+            r.get("poet_name", "") for r in records
+            if r.get("poet_name", "") not in UNNAMED
+        )
+        top_poets = poet_counts.most_common(10)
+        p_names = [n for n, _ in reversed(top_poets)]
+        p_vals  = [v for _, v in reversed(top_poets)]
+
+        fig_poets = go.Figure(go.Bar(
+            x=p_vals, y=p_names, orientation="h",
+            marker=dict(color=p_vals, colorscale=[[0, "#C8A06A"], [1, "#5E3A1C"]]),
+            text=p_vals, textposition="outside",
+            textfont=dict(size=11, color="#5E3A1C"),
+        ))
+        fig_poets.update_layout(
+            title=dict(text="Top Poets / أبرز الشعراء", font=dict(size=13, color="#5E3A1C"), x=0),
+            height=380,
+            xaxis=dict(showgrid=True, gridcolor="#D8C9AA", title="Poems", tickfont=dict(size=10)),
+            yaxis=dict(tickfont=dict(size=11, family="IBM Plex Sans Arabic, sans-serif"), automargin=True),
+            **_CHART_LAYOUT,
+        )
+
+        col_l, col_r = st.columns(2)
+        with col_l:
+            st.plotly_chart(fig_genre, use_container_width=True, config={"displayModeBar": False})
+        with col_r:
+            st.plotly_chart(fig_poets, use_container_width=True, config={"displayModeBar": False})
+
+        # Chart 3: Poems per manuscript (full width)
+        ms_counts = Counter(
+            r.get("manuscript_short_key", "") for r in records
+            if r.get("manuscript_short_key")
+        )
+        top_ms   = ms_counts.most_common(14)
+        ms_keys  = [k for k, _ in reversed(top_ms)]
+        ms_vals  = [v for _, v in reversed(top_ms)]
+        n = len(ms_keys)
+        ms_colors = [
+            f"rgb({int(94 + (176 - 94) * i / max(n - 1, 1))}, "
+            f"{int(58 + (138 - 58) * i / max(n - 1, 1))}, "
+            f"{int(28 + (90 - 28) * i / max(n - 1, 1))})"
+            for i in range(n)
+        ]
+
+        fig_ms = go.Figure(go.Bar(
+            x=ms_vals, y=ms_keys, orientation="h",
+            marker_color=ms_colors,
+            text=ms_vals, textposition="outside",
+            textfont=dict(size=11, color="#5E3A1C"),
+        ))
+        fig_ms.update_layout(
+            title=dict(text="Poems per Manuscript / القصائد بحسب المخطوطة", font=dict(size=13, color="#5E3A1C"), x=0),
+            height=400,
+            xaxis=dict(showgrid=True, gridcolor="#D8C9AA", tickfont=dict(size=10)),
+            yaxis=dict(tickfont=dict(size=11, family="JetBrains Mono, monospace"), automargin=True),
+            **_CHART_LAYOUT,
+        )
+        st.plotly_chart(fig_ms, use_container_width=True, config={"displayModeBar": False})
+
+    except Exception:
+        pass  # plotly unavailable — skip charts, KPI cards already rendered
+
+    st.markdown(
+        '<hr style="border:none;border-top:1px solid #D8C9AA;margin:8px 0 24px">',
+        unsafe_allow_html=True,
+    )
+
+
 def _render_browse_corpus() -> None:
     """
-    Browse Corpus page — a simple searchable table of all verse anchors.
+    Browse Corpus page — analytics dashboard + searchable table of all verse anchors.
     Why this exists: the v2 hero has a "Browse the corpus" button that
     routes to page="browse". This gives users a lightweight way to explore
     the 4,031 entries without posing a full RAG query.
@@ -3934,13 +4131,21 @@ def _render_browse_corpus() -> None:
             import json
             with open(registry_path, "r", encoding="utf-8") as f:
                 records = json.load(f)
-            # Filter out header rows and records with empty matla (archivist noise)
+            # unified_registry uses "matla"; older files use "matla_text"
+            def _verse(r: dict) -> str:
+                return (r.get("matla_text") or r.get("matla") or r.get("text") or "").strip()
+
+            # Filter out header rows and records with empty verse text (archivist noise)
             records = [
                 r for r in records
-                if (r.get("matla_text") or "").strip()
+                if _verse(r)
                 and (r.get("poet_name") or "").strip() not in ("مخطوطة", "")
                 and "header_row" not in (r.get("_cleaning_tags") or [])
             ]
+            # Normalise verse field to "matla_text" for uniform downstream use
+            for r in records:
+                if not r.get("matla_text"):
+                    r["matla_text"] = _verse(r)
         except Exception as exc:
             st.error(f"Could not load registry: {exc}")
     else:
@@ -3962,6 +4167,16 @@ def _render_browse_corpus() -> None:
         "دينية":  "دينية — Religious / Devotional",
         "غزو":    "غزو — Raid / War Narrative",
     }
+
+    # ── Analytics dashboard (corpus-wide stats, unaffected by filters) ────────
+    _render_corpus_analytics(records, GENRE_BILINGUAL)
+
+    st.markdown(
+        '<div style="font-size:13px;font-weight:600;color:#5E3A1C;'
+        'letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px">'
+        'Filter &amp; Browse / تصفية وتصفح</div>',
+        unsafe_allow_html=True,
+    )
 
     # ── Filter controls ────────────────────────────────────────────────────────
     col_search, col_genre, col_ms = st.columns([2, 1, 1])

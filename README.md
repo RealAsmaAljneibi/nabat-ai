@@ -182,9 +182,6 @@ handwritten-poems/
 │   ├── enrich_genre_heuristic.py Run genre classifier over all anchors
 │   └── evaluate.py               M10 evaluation harness (4 axes)
 ├── tests/                        14 test files · ~4,750 lines
-├── doc/
-│   ├── IMPLEMENTATION_PLAN.md
-│   └── ARCHITECTURE_DIAGRAMS.md
 ├── infra/escriptorium/           Self-hosted eScriptorium (optional)
 ├── requirements.txt
 └── .env.example
@@ -264,11 +261,7 @@ Then set `ESCR_BASE_URL` and `ESCR_API_TOKEN` in your `.env`. See `infra/escript
 | Document | Purpose |
 |---|---|
 | [`DEVELOPMENT_LOG.md`](DEVELOPMENT_LOG.md) | Iterative development process — prompt engineering, debugging, AI-assisted decisions |
-| [`doc/AI_USAGE_REFLECTION.md`](doc/AI_USAGE_REFLECTION.md) | What worked / failed with code generators, limitations, improvements |
-| [`doc/TRACEABILITY.md`](doc/TRACEABILITY.md) | Use-case → Architecture → Code mapping for all four personas |
-| [`doc/IMPLEMENTATION_PLAN.md`](doc/IMPLEMENTATION_PLAN.md) | Build plan v2 — all milestones M0–M11 |
-| [`doc/ARCHITECTURE_DIAGRAMS.md`](doc/ARCHITECTURE_DIAGRAMS.md) | Mermaid source for all pipeline diagrams |
-| [`doc/DATA_PIPELINE.md`](doc/DATA_PIPELINE.md) | ETL workflow — 4-phase corpus strategy |
+| [`CLAUDE.md`](CLAUDE.md) | Full architecture reference, directory structure, and guiding design decisions |
 
 ---
 
